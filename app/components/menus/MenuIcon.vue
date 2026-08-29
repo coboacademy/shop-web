@@ -15,7 +15,6 @@ import {
   LayoutDashboard,
   LockKeyhole,
   Menu,
-  Package,
   PanelTop,
   ScrollText,
   Settings,
@@ -65,12 +64,9 @@ const iconMap: Record<string, any> = {
   rbac: Workflow,
   management: UserCog,
 
-  // inventory
-  products: Package,
-  product: Package,
+  // inventory (product icons removed)
   countries: Globe2,
   country: Globe2,
-  inventory: Package,
 
   // system
   menus: PanelTop,
@@ -100,7 +96,6 @@ const iconMap: Record<string, any> = {
   LayoutDashboard,
   LockKeyhole,
   Menu,
-  Package,
   PanelTop,
   ScrollText,
   Settings,

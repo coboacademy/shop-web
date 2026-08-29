@@ -1,3 +1,5 @@
+// Backup of app/pages/products/index.vue
+
 <script setup lang="ts">
 definePageMeta({
   layout: 'public',
