@@ -77,7 +77,7 @@ const moduleOptions = [
   { label: "Permissions", value: "permissions" },
   { label: "Settings", value: "settings" },
   { label: "Profile", value: "profile" },
-  { label: "Products", value: "products" },
+  // Products removed
   { label: "Countries", value: "countries" },
   { label: "Menus", value: "menus" },
 ];
@@ -98,9 +98,7 @@ const actionOptions = [
   { label: "Permission Updated", value: "permission.updated" },
   { label: "Permission Deleted", value: "permission.deleted" },
 
-  { label: "Product Created", value: "product.created" },
-  { label: "Product Updated", value: "product.updated" },
-  { label: "Product Deleted", value: "product.deleted" },
+  // Product actions removed
 
   { label: "Country Created", value: "country.created" },
   { label: "Country Updated", value: "country.updated" },
