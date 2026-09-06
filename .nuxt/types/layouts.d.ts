@@ -12,6 +12,7 @@ declare module 'nuxt/app' {
     default: ComponentProps<typeof import("D:/GIT/github/users/coboacademy/shop-web/app/layouts/default.vue").default>
     public: ComponentProps<typeof import("D:/GIT/github/users/coboacademy/shop-web/app/layouts/public.vue").default>
     user: ComponentProps<typeof import("D:/GIT/github/users/coboacademy/shop-web/app/layouts/user.vue").default>
+    vendor: ComponentProps<typeof import("D:/GIT/github/users/coboacademy/shop-web/app/layouts/vendor.vue").default>
   }
   export type LayoutKey = keyof NuxtLayouts extends never ? string : keyof NuxtLayouts
   interface PageMeta {
