@@ -75,8 +75,25 @@ export const useAuthStore = defineStore('auth', {
 
     hasRole: (state) => {
       return (role: string) => {
-        return state.user?.roles?.includes(role) || false
+        return state.user?.roles?.some((item) => item.toLowerCase() === role.toLowerCase()) || false
       }
+    },
+
+    hasVendorKyc: (state) => {
+      const user = state.user as any
+      if (!user) return false
+
+      const vendor = user.vendor || user.vendor_profile || user.vendorProfile || user.vendor_data
+
+      if (vendor && typeof vendor === 'object') {
+        return true
+      }
+
+      if (typeof user.kyc_submitted === 'boolean') return user.kyc_submitted
+      if (typeof user.has_vendor_profile === 'boolean') return user.has_vendor_profile
+      if (typeof user.hasVendorProfile === 'boolean') return user.hasVendorProfile
+
+      return false
     },
   },
 
@@ -84,6 +101,10 @@ export const useAuthStore = defineStore('auth', {
     redirectPath() {
       if (this.hasPermission('dashboard.view')) {
         return '/admin/dashboard'
+      }
+
+      if (this.hasRole('Vendor') || this.hasPermission('vendor.view')) {
+        return '/vendor/dashboard'
       }
 
       if (this.hasPermission('account.view')) {
@@ -167,6 +188,10 @@ export const useAuthStore = defineStore('auth', {
 
         this.setAuth(data.user, data.token)
         await this.fetchUser()
+
+        if (this.hasRole('Vendor') || this.hasPermission('vendor.view')) {
+          return '/vendor/dashboard'
+        }
 
         return data.redirect_to || this.redirectPath()
       } catch (error: any) {

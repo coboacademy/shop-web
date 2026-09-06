@@ -204,6 +204,7 @@ declare global {
   const useToastStore: typeof import('../../app/stores/toast').useToastStore
   const useTransitionState: typeof import('vue').useTransitionState
   const useUser: typeof import('../../app/composables/useUser').useUser
+  const useVendor: typeof import('../../app/composables/useVendor').useVendor
   const watch: typeof import('vue').watch
   const watchEffect: typeof import('vue').watchEffect
   const watchPostEffect: typeof import('vue').watchPostEffect
@@ -268,6 +269,9 @@ declare global {
   // @ts-ignore
   export type { UserStatus, UserItem, UserPagination, UserStats, UserListResponse, CreateUserPayload, UpdateUserPayload, CreateUserResponse } from '../../app/composables/useUser'
   import('../../app/composables/useUser')
+  // @ts-ignore
+  export type { VendorProfile, VendorProfileResponse, VendorKycPayload } from '../../app/composables/useVendor'
+  import('../../app/composables/useVendor')
   // @ts-ignore
   export type { CacheEntry } from '../../app/utils/cache'
   import('../../app/utils/cache')
@@ -485,6 +489,7 @@ declare module 'vue' {
     readonly useToastStore: UnwrapRef<typeof import('../../app/stores/toast')['useToastStore']>
     readonly useTransitionState: UnwrapRef<typeof import('vue')['useTransitionState']>
     readonly useUser: UnwrapRef<typeof import('../../app/composables/useUser')['useUser']>
+    readonly useVendor: UnwrapRef<typeof import('../../app/composables/useVendor')['useVendor']>
     readonly watch: UnwrapRef<typeof import('vue')['watch']>
     readonly watchEffect: UnwrapRef<typeof import('vue')['watchEffect']>
     readonly watchPostEffect: UnwrapRef<typeof import('vue')['watchPostEffect']>

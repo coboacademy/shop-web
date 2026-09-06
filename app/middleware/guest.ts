@@ -15,11 +15,16 @@ export default defineNuxtRouteMiddleware(async (to) => {
 
   if (authStore.isAuthenticated) {
     const isAdmin = authStore.hasPermission('dashboard.view')
+    const isVendor = authStore.hasRole('Vendor') || authStore.hasPermission('vendor.view')
 
     if (to.path.startsWith('/admin')) {
-      return navigateTo(isAdmin ? '/admin/dashboard' : '/app')
+      return navigateTo(isAdmin ? '/admin/dashboard' : isVendor ? '/vendor/dashboard' : '/app')
     }
 
-    return navigateTo(isAdmin ? '/admin/dashboard' : '/app')
+    if (to.path.startsWith('/vendor')) {
+      return navigateTo(isVendor ? '/vendor/dashboard' : isAdmin ? '/admin/dashboard' : '/app')
+    }
+
+    return navigateTo(isAdmin ? '/admin/dashboard' : isVendor ? '/vendor/dashboard' : '/app')
   }
 })
