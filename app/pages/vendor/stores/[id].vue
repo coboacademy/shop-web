@@ -22,7 +22,14 @@ definePageMeta({
 });
 
 const route = useRoute();
-const { getStore, updateStore, uploadStoreLogo, deleteStoreLogo, uploadStoreCover } = useVendor();
+const {
+  getStore,
+  updateStore,
+  uploadStoreLogo,
+  deleteStoreLogo,
+  uploadStoreCover,
+  deleteStoreCover,
+} = useVendor();
 const toast = useToast();
 
 const store = ref<Store | null>(null);
@@ -36,6 +43,8 @@ const logoDeleting = ref(false);
 const deleteLogoModalOpen = ref(false);
 const coverInput = ref<HTMLInputElement | null>(null);
 const coverUploading = ref(false);
+const coverDeleting = ref(false);
+const deleteCoverModalOpen = ref(false);
 const form = reactive({
   name: "",
   phone: "",
@@ -207,6 +216,23 @@ const handleCoverSelected = async (event: Event) => {
   }
 };
 
+const handleDeleteCover = async () => {
+  if (!store.value?.cover_image) return;
+
+  coverDeleting.value = true;
+
+  try {
+    const response = await deleteStoreCover(String(route.params.id));
+    store.value = response.data.store;
+    deleteCoverModalOpen.value = false;
+    toast.success("Cover deleted", response.message || "The store cover was deleted successfully.");
+  } catch (error: any) {
+    toast.error("Cover deletion failed", error.message || "Failed to delete store cover");
+  } finally {
+    coverDeleting.value = false;
+  }
+};
+
 const formatDate = (value?: string) => {
   if (!value) return "-";
 
@@ -326,7 +352,7 @@ onMounted(fetchStore);
             </div>
           </div>
 
-          <div class="flex justify-end">
+          <div class="flex flex-wrap justify-end gap-3">
             <input
               ref="coverInput"
               type="file"
@@ -337,6 +363,15 @@ onMounted(fetchStore);
             <AppButton variant="secondary" :loading="coverUploading" @click="openCoverPicker">
               <ImagePlus class="h-4 w-4" />
               {{ store.cover_image ? "Change cover" : "Upload cover" }}
+            </AppButton>
+            <AppButton
+              v-if="store.cover_image"
+              variant="danger"
+              :loading="coverDeleting"
+              @click="deleteCoverModalOpen = true"
+            >
+              <Trash2 class="h-4 w-4" />
+              Delete cover
             </AppButton>
           </div>
         </div>
@@ -455,6 +490,30 @@ onMounted(fetchStore);
           <AppButton variant="danger" :loading="logoDeleting" @click="handleDeleteLogo">
             <Trash2 class="h-4 w-4" />
             Delete logo
+          </AppButton>
+        </div>
+      </div>
+    </AppModal>
+
+    <AppModal
+      :open="deleteCoverModalOpen"
+      title="Delete store cover"
+      subtitle="This action cannot be undone."
+      size="sm"
+      @close="deleteCoverModalOpen = false"
+    >
+      <template #icon><Trash2 class="h-5 w-5" /></template>
+      <div class="space-y-5">
+        <AlertMessage type="warning" title="Confirm delete">
+          Are you sure you want to delete the cover for <strong>{{ store?.name }}</strong>?
+        </AlertMessage>
+        <div class="flex justify-end gap-3 border-t border-border pt-5">
+          <AppButton variant="secondary" :disabled="coverDeleting" @click="deleteCoverModalOpen = false">
+            Cancel
+          </AppButton>
+          <AppButton variant="danger" :loading="coverDeleting" @click="handleDeleteCover">
+            <Trash2 class="h-4 w-4" />
+            Delete cover
           </AppButton>
         </div>
       </div>

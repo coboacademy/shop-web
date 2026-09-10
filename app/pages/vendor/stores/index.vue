@@ -2,8 +2,10 @@
 import {
   Ban,
   CheckCircle2,
+  CirclePause,
   Eye,
   Pencil,
+  PlayCircle,
   Plus,
   RefreshCcw,
   Store as StoreIcon,
@@ -19,7 +21,7 @@ definePageMeta({
   title: "Store Management",
 });
 
-const { createStore, getStores, deleteStore } = useVendor();
+const { createStore, getStores, activateStore, deactivateStore, deleteStore } = useVendor();
 const toast = useToast();
 
 const form = reactive<CreateStorePayload>({
@@ -50,9 +52,15 @@ const listError = ref("");
 const createModalOpen = ref(false);
 const editModalOpen = ref(false);
 const deleteModalOpen = ref(false);
+const activateModalOpen = ref(false);
+const deactivateModalOpen = ref(false);
 const deleting = ref(false);
+const activating = ref(false);
+const deactivating = ref(false);
 const selectedEditStore = ref<Store | null>(null);
 const selectedStore = ref<Store | null>(null);
+const selectedActivateStore = ref<Store | null>(null);
+const selectedDeactivateStore = ref<Store | null>(null);
 const search = ref("");
 const status = ref("");
 
@@ -161,6 +169,68 @@ const openDeleteModal = (store: Store) => {
   deleteModalOpen.value = true;
 };
 
+const openActivateModal = (store: Store) => {
+  selectedActivateStore.value = store;
+  activateModalOpen.value = true;
+};
+
+const closeActivateModal = () => {
+  if (activating.value) return;
+
+  activateModalOpen.value = false;
+  selectedActivateStore.value = null;
+};
+
+const handleActivateStore = async () => {
+  if (!selectedActivateStore.value) return;
+
+  activating.value = true;
+
+  try {
+    const response = await activateStore(selectedActivateStore.value.id);
+    stores.value = stores.value.map((store) =>
+      store.id === response.data.store.id ? response.data.store : store
+    );
+    toast.success("Store activated", response.message || "The store is now active.");
+    closeActivateModal();
+  } catch (error: any) {
+    toast.error("Activation failed", error.message || "Failed to activate store");
+  } finally {
+    activating.value = false;
+  }
+};
+
+const openDeactivateModal = (store: Store) => {
+  selectedDeactivateStore.value = store;
+  deactivateModalOpen.value = true;
+};
+
+const closeDeactivateModal = () => {
+  if (deactivating.value) return;
+
+  deactivateModalOpen.value = false;
+  selectedDeactivateStore.value = null;
+};
+
+const handleDeactivateStore = async () => {
+  if (!selectedDeactivateStore.value) return;
+
+  deactivating.value = true;
+
+  try {
+    const response = await deactivateStore(selectedDeactivateStore.value.id);
+    stores.value = stores.value.map((store) =>
+      store.id === response.data.store.id ? response.data.store : store
+    );
+    toast.success("Store deactivated", response.message || "The store is now inactive.");
+    closeDeactivateModal();
+  } catch (error: any) {
+    toast.error("Deactivation failed", error.message || "Failed to deactivate store");
+  } finally {
+    deactivating.value = false;
+  }
+};
+
 const openEditModal = (store: Store) => {
   selectedEditStore.value = store;
   editModalOpen.value = true;
@@ -205,6 +275,14 @@ const handleDeleteStore = async () => {
 const handleStoreAction = (store: Store, action: string) => {
   if (action === "edit") {
     return openEditModal(store);
+  }
+
+  if (action === "activate") {
+    return openActivateModal(store);
+  }
+
+  if (action === "deactivate") {
+    return openDeactivateModal(store);
   }
 
   if (action === "delete") {
@@ -334,6 +412,8 @@ onMounted(fetchStores);
           <AppDropdown
             width="w-64"
             :items="[
+              { label: 'Activate Store', value: 'activate', icon: PlayCircle, variant: 'success', description: 'Make this store visible', visible: !row.store.is_active },
+              { label: 'Deactivate Store', value: 'deactivate', icon: CirclePause, variant: 'warning', description: 'Hide this store from the platform', visible: row.store.is_active },
               { label: 'Edit Store', value: 'edit', icon: Pencil, description: 'Update store information' },
               { label: 'Delete Store', value: 'delete', icon: Trash2, variant: 'danger', description: 'Remove this storefront' },
             ]"
@@ -456,6 +536,54 @@ onMounted(fetchStores);
       @close="closeEditModal"
       @updated="handleStoreUpdated"
     />
+
+    <AppModal
+      :open="activateModalOpen"
+      title="Activate store"
+      subtitle="This store will become visible and operational."
+      size="sm"
+      @close="closeActivateModal"
+    >
+      <template #icon><PlayCircle class="h-5 w-5" /></template>
+      <div class="space-y-5">
+        <AlertMessage type="warning" title="Confirm activation">
+          Are you sure you want to activate <strong>{{ selectedActivateStore?.name }}</strong>?
+        </AlertMessage>
+        <div class="flex justify-end gap-3 border-t border-border pt-5">
+          <AppButton variant="secondary" :disabled="activating" @click="closeActivateModal">
+            Cancel
+          </AppButton>
+          <AppButton variant="success" :loading="activating" @click="handleActivateStore">
+            <PlayCircle class="h-4 w-4" />
+            Activate store
+          </AppButton>
+        </div>
+      </div>
+    </AppModal>
+
+    <AppModal
+      :open="deactivateModalOpen"
+      title="Deactivate store"
+      subtitle="This store will no longer be visible or operational."
+      size="sm"
+      @close="closeDeactivateModal"
+    >
+      <template #icon><CirclePause class="h-5 w-5" /></template>
+      <div class="space-y-5">
+        <AlertMessage type="warning" title="Confirm deactivation">
+          Are you sure you want to deactivate <strong>{{ selectedDeactivateStore?.name }}</strong>?
+        </AlertMessage>
+        <div class="flex justify-end gap-3 border-t border-border pt-5">
+          <AppButton variant="secondary" :disabled="deactivating" @click="closeDeactivateModal">
+            Cancel
+          </AppButton>
+          <AppButton variant="warning" :loading="deactivating" @click="handleDeactivateStore">
+            <CirclePause class="h-4 w-4" />
+            Deactivate store
+          </AppButton>
+        </div>
+      </div>
+    </AppModal>
 
     <AppModal
       :open="deleteModalOpen"

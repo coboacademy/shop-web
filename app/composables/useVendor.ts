@@ -166,6 +166,32 @@ export const useVendor = () => {
     }
   }
 
+  const activateStore = async (id: string): Promise<StoreResponse> => {
+    try {
+      const response = await api.patch<StoreResponse>(`/vendor/stores/${id}/activate`)
+      return response.data
+    } catch (error: any) {
+      throw {
+        message: error.response?.data?.message || 'Failed to activate store',
+        errors: error.response?.data?.errors || {},
+        status: error.response?.status || 500,
+      }
+    }
+  }
+
+  const deactivateStore = async (id: string): Promise<StoreResponse> => {
+    try {
+      const response = await api.patch<StoreResponse>(`/vendor/stores/${id}/deactivate`)
+      return response.data
+    } catch (error: any) {
+      throw {
+        message: error.response?.data?.message || 'Failed to deactivate store',
+        errors: error.response?.data?.errors || {},
+        status: error.response?.status || 500,
+      }
+    }
+  }
+
   const deleteStore = async (id: string): Promise<StoreResponse> => {
     try {
       const response = await api.delete<StoreResponse>(`/vendor/stores/${id}`)
@@ -224,6 +250,19 @@ export const useVendor = () => {
     }
   }
 
+  const deleteStoreCover = async (id: string): Promise<StoreResponse> => {
+    try {
+      const response = await api.delete<StoreResponse>(`/vendor/stores/${id}/cover`)
+      return response.data
+    } catch (error: any) {
+      throw {
+        message: error.response?.data?.message || 'Failed to delete store cover',
+        errors: error.response?.data?.errors || {},
+        status: error.response?.status || 500,
+      }
+    }
+  }
+
   return {
     getProfile,
     updateKyc,
@@ -231,9 +270,12 @@ export const useVendor = () => {
     getStore,
     getStores,
     updateStore,
+    activateStore,
+    deactivateStore,
     deleteStore,
     uploadStoreLogo,
     deleteStoreLogo,
     uploadStoreCover,
+    deleteStoreCover,
   }
 }
