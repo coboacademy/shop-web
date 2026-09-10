@@ -51,7 +51,7 @@ export { useRole, RolePagination, RoleListResponse, RolePayload, RolePermissionI
 export { useSettings, SettingItem, SettingsResponse, UpdateSettingsPayload } from '../app/composables/useSettings';
 export { useToast } from '../app/composables/useToast';
 export { useUser, UserStatus, UserItem, UserPagination, UserStats, UserListResponse, CreateUserPayload, UpdateUserPayload, CreateUserResponse } from '../app/composables/useUser';
-export { useVendor, VendorProfile, VendorProfileResponse, VendorKycPayload } from '../app/composables/useVendor';
+export { useVendor, VendorProfile, VendorProfileResponse, Store, CreateStorePayload, UpdateStorePayload, StoreResponse, StoreListResponse, VendorKycPayload } from '../app/composables/useVendor';
 export { makeCacheKey, isCacheFresh, CacheEntry } from '../app/utils/cache';
 export { downloadBlobFile } from '../app/utils/downloadFile';
 export { useAppCacheStore } from '../app/stores/appCache';

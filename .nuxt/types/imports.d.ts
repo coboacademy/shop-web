@@ -270,7 +270,7 @@ declare global {
   export type { UserStatus, UserItem, UserPagination, UserStats, UserListResponse, CreateUserPayload, UpdateUserPayload, CreateUserResponse } from '../../app/composables/useUser'
   import('../../app/composables/useUser')
   // @ts-ignore
-  export type { VendorProfile, VendorProfileResponse, VendorKycPayload } from '../../app/composables/useVendor'
+  export type { VendorProfile, VendorProfileResponse, Store, CreateStorePayload, UpdateStorePayload, StoreResponse, StoreListResponse, VendorKycPayload } from '../../app/composables/useVendor'
   import('../../app/composables/useVendor')
   // @ts-ignore
   export type { CacheEntry } from '../../app/utils/cache'
