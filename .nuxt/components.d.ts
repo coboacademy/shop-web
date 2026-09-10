@@ -62,6 +62,7 @@ export const CreateUserModal: typeof import("../app/components/users/CreateUserM
 export const DeleteUserModal: typeof import("../app/components/users/DeleteUserModal.vue")['default']
 export const EditUserModal: typeof import("../app/components/users/EditUserModal.vue")['default']
 export const UserStatusBadge: typeof import("../app/components/users/UserStatusBadge.vue")['default']
+export const EditStoreModal: typeof import("../app/components/vendor/EditStoreModal.vue")['default']
 export const NuxtWelcome: typeof import("../node_modules/nuxt/dist/app/components/welcome.vue")['default']
 export const NuxtLayout: typeof import("../node_modules/nuxt/dist/app/components/nuxt-layout")['default']
 export const NuxtErrorBoundary: typeof import("../node_modules/nuxt/dist/app/components/nuxt-error-boundary.vue")['default']
@@ -134,6 +135,7 @@ export const LazyCreateUserModal: LazyComponent<typeof import("../app/components
 export const LazyDeleteUserModal: LazyComponent<typeof import("../app/components/users/DeleteUserModal.vue")['default']>
 export const LazyEditUserModal: LazyComponent<typeof import("../app/components/users/EditUserModal.vue")['default']>
 export const LazyUserStatusBadge: LazyComponent<typeof import("../app/components/users/UserStatusBadge.vue")['default']>
+export const LazyEditStoreModal: LazyComponent<typeof import("../app/components/vendor/EditStoreModal.vue")['default']>
 export const LazyNuxtWelcome: LazyComponent<typeof import("../node_modules/nuxt/dist/app/components/welcome.vue")['default']>
 export const LazyNuxtLayout: LazyComponent<typeof import("../node_modules/nuxt/dist/app/components/nuxt-layout")['default']>
 export const LazyNuxtErrorBoundary: LazyComponent<typeof import("../node_modules/nuxt/dist/app/components/nuxt-error-boundary.vue")['default']>

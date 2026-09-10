@@ -14,6 +14,7 @@ const emit = defineEmits<{
 
 const route = useRoute();
 const menuStore = useMenuStore();
+const authStore = useAuthStore();
 
 const isActive = (href?: string | null) => {
   if (!href) return false;
@@ -22,7 +23,26 @@ const isActive = (href?: string | null) => {
 };
 
 const visibleNavigation = computed<MenuItem[]>(() => {
-  return Array.isArray(menuStore.menus) ? menuStore.menus : [];
+  const menus = Array.isArray(menuStore.menus) ? menuStore.menus : [];
+  const isVendor = authStore.hasRole("Vendor") || authStore.hasPermission("vendor.view");
+
+  if (!isVendor || menus.some((item) => item.route === "/vendor/stores")) {
+    return menus;
+  }
+
+  return [
+    ...menus,
+    {
+      id: -1,
+      name: "store",
+      label: "Store Management",
+      route: "/vendor/stores",
+      group: "Account",
+      sort_order: 999,
+      is_active: true,
+      is_system: true,
+    },
+  ];
 });
 
 const groupedNavigation = computed(() => {

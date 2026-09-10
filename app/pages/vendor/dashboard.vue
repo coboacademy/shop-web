@@ -63,6 +63,7 @@ const recentOrders = [
 
 const quickActions = [
   { title: "Manage products", to: "/vendor/products", icon: Store, tone: "info" },
+  { title: "Create a store", to: "/vendor/stores", icon: Store, tone: "info" },
   { title: "Orders center", to: "/vendor/orders", icon: CreditCard, tone: "success" },
   { title: "Manage KYC", to: "/vendor/profile", icon: ShieldCheck, tone: "warning" },
   { title: "Vendor profile", to: "/vendor/profile", icon: Users, tone: "warning" },
