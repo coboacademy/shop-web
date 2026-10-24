@@ -74,10 +74,6 @@ const permissionOptions = [
 
   { label: "RBAC View", value: "rbac.view" },
 
-  { label: "Product View", value: "product.view" },
-  { label: "Product Create", value: "product.create" },
-  { label: "Product Update", value: "product.update" },
-  { label: "Product Delete", value: "product.delete" },
 
   { label: "Country View", value: "country.view" },
   { label: "Country Create", value: "country.create" },

@@ -10,6 +10,10 @@ export default defineNuxtRouteMiddleware((to) => {
       return navigateTo('/admin/login')
     }
 
+    if (to.path.startsWith('/vendor')) {
+      return navigateTo('/vendor/login')
+    }
+
     return navigateTo('/login')
   }
 })

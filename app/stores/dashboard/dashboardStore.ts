@@ -7,7 +7,7 @@ import type {
   DashboardSystem,
 } from "~/composables/useDashboard";
 
-const defaultStats = (): DashboardStats & { total_products?: number } => ({
+const defaultStats = (): DashboardStats => ({
   total_users: 0,
   active_users: 0,
   pending_users: 0,
@@ -15,7 +15,6 @@ const defaultStats = (): DashboardStats & { total_products?: number } => ({
   total_roles: 0,
   total_permissions: 0,
   total_audit_logs: 0,
-  total_products: 0,
 });
 
 const defaultSystem = (): DashboardSystem => ({
@@ -45,7 +44,6 @@ export const useDashboardManagementStore = defineStore("dashboard-management", {
     totalRoles: (state) => state.stats?.total_roles ?? 0,
     totalPermissions: (state) => state.stats?.total_permissions ?? 0,
     totalAuditLogs: (state) => state.stats?.total_audit_logs ?? 0,
-    totalProducts: (state) => state.stats?.total_products ?? 0,
   },
 
   actions: {

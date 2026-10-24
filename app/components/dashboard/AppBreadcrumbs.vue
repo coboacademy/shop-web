@@ -32,7 +32,6 @@ const pageTitleMap: Record<string, string> = {
   "/admin/audit-logs": "Audit Logs",
   "/admin/menus": "Menus",
   "/admin/settings": "Settings",
-  "/admin/products": "Products",
   "/admin/countries": "Countries",
   "/notifications": "Notifications",
   "/ui-components": "UI Components",

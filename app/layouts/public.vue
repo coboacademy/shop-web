@@ -9,7 +9,6 @@
         <nav class="flex items-center gap-4 text-sm font-medium">
           <NuxtLink to="/">Home</NuxtLink>
           <NuxtLink to="/about">About</NuxtLink>
-          <NuxtLink to="/products">Products</NuxtLink>
           <NuxtLink to="/login">Login</NuxtLink>
           <NuxtLink to="/admin/login">Admin</NuxtLink>
         </nav>

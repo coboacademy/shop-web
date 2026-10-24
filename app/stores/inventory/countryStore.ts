@@ -7,7 +7,7 @@ import type {
   CountryStats,
 } from "~/composables/useCountry";
 
-const defaultPagination = (): CountryPagination => ({
+const defaultPagination = ():   CountryPagination => ({
   current_page: 1,
   last_page: 1,
   per_page: 10,

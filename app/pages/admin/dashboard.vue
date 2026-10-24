@@ -6,16 +6,16 @@ import {
   CheckCircle2,
   Archive,
   TriangleAlert,
-  Package,
   KeyRound,
   RefreshCcw,
   ShieldCheck,
+  Store,
   Users,
   Workflow,
 } from "lucide-vue-next";
+import type { AdminVendorStatistics } from "~/composables/useVendor";
 
 import { useDashboardManagementStore } from "~/stores/dashboard/dashboardStore";
-import { useProductManagementStore } from "~/stores/inventory/productStore";
 
 definePageMeta({
   layout: "dashboard",
@@ -24,12 +24,26 @@ definePageMeta({
   title: "Dashboard",
 });
 
+
 const dashboardStore = useDashboardManagementStore();
-const productStore = useProductManagementStore();
 const toast = useToast();
+const authStore = useAuthStore();
+const { getAdminVendorStatistics } = useVendor();
+
+const canViewVendorStatistics = computed(() => authStore.hasPermission("vendor.view"));
+const vendorStatistics = ref<AdminVendorStatistics | null>(null);
+const vendorStatisticsLoading = ref(false);
+const vendorStatisticsError = ref("");
+
+const vendorStatusRows = computed(() => [
+  { label: "Pending", count: vendorStatistics.value?.pending ?? 0, variant: "warning" as const },
+  { label: "Approved", count: vendorStatistics.value?.approved ?? 0, variant: "success" as const },
+  { label: "Rejected", count: vendorStatistics.value?.rejected ?? 0, variant: "danger" as const },
+  { label: "Suspended", count: vendorStatistics.value?.suspended ?? 0, variant: "default" as const },
+]);
 
 const loading = computed(() => dashboardStore.loading);
-const refreshing = computed(() => dashboardStore.refreshing || productStore.refreshing);
+const refreshing = computed(() => dashboardStore.refreshing);
 const errorMessage = computed(() => dashboardStore.errorMessage);
 
 const totalUsers = computed(() => dashboardStore.totalUsers);
@@ -40,10 +54,7 @@ const totalRoles = computed(() => dashboardStore.totalRoles);
 const totalPermissions = computed(() => dashboardStore.totalPermissions);
 const totalAuditLogs = computed(() => dashboardStore.totalAuditLogs);
 
-const totalProducts = computed(() => productStore.totalProducts);
-const activeProducts = computed(() => productStore.activeProducts);
-const draftProducts = computed(() => productStore.draftProducts);
-const lowStockProducts = computed(() => productStore.lowStockProducts);
+// product-related stats removed
 
 const system = computed(() => dashboardStore.system);
 
@@ -63,9 +74,7 @@ const roleDistribution = computed(() => {
     : [];
 });
 
-const recentProducts = computed(() => {
-  return Array.isArray(productStore.products) ? productStore.products.slice(0, 5) : [];
-});
+// recent products removed
 
 const fetchDashboard = async (
   options: {
@@ -74,21 +83,31 @@ const fetchDashboard = async (
   } = {}
 ) => {
   try {
-    await Promise.allSettled([
+    await Promise.all([
       dashboardStore.fetchDashboard(options),
-      productStore.fetchProducts(
-        {
-          page: 1,
-          per_page: 5,
-        },
-        options
-      ),
+      fetchVendorStatistics(),
     ]);
   } catch (error: any) {
     toast.error(
       "Dashboard failed",
       error.response?.data?.message || error.message || "Failed to load dashboard"
     );
+  }
+};
+
+const fetchVendorStatistics = async () => {
+  if (!canViewVendorStatistics.value) return;
+
+  vendorStatisticsLoading.value = true;
+  vendorStatisticsError.value = "";
+
+  try {
+    vendorStatistics.value = await getAdminVendorStatistics();
+  } catch (error: any) {
+    vendorStatisticsError.value =
+      error.response?.data?.message || error.message || "Failed to load vendor statistics";
+  } finally {
+    vendorStatisticsLoading.value = false;
   }
 };
 
@@ -106,9 +125,7 @@ const rolePercent = (count: number) => {
 };
 
 onMounted(async () => {
-  await fetchDashboard({
-    silent: dashboardStore.totalUsers > 0 || productStore.hasData,
-  });
+  await fetchDashboard();
 });
 </script>
 <template>
@@ -186,60 +203,7 @@ onMounted(async () => {
       </StatsCard>
     </div>
 
-    <!-- Product Stats -->
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <StatsCard
-        title="Total Products"
-        :value="totalProducts"
-        subtitle="All inventory items"
-        tone="info"
-      >
-        <template #badge>
-          <AppBadge variant="info" shape="square" size="md">
-            <Database class="h-5 w-5" />
-          </AppBadge>
-        </template>
-      </StatsCard>
-
-      <StatsCard
-        title="Active Products"
-        :value="activeProducts"
-        subtitle="Published products"
-        tone="success"
-      >
-        <template #badge>
-          <AppBadge variant="success" shape="square" size="md">
-            <CheckCircle2 class="h-5 w-5" />
-          </AppBadge>
-        </template>
-      </StatsCard>
-
-      <StatsCard
-        title="Draft Products"
-        :value="draftProducts"
-        subtitle="Not published yet"
-        tone="warning"
-      >
-        <template #badge>
-          <AppBadge variant="warning" shape="square" size="md">
-            <Archive class="h-5 w-5" />
-          </AppBadge>
-        </template>
-      </StatsCard>
-
-      <StatsCard
-        title="Low Stock"
-        :value="lowStockProducts"
-        subtitle="Stock ≤ 5"
-        tone="danger"
-      >
-        <template #badge>
-          <AppBadge variant="danger" shape="square" size="md">
-            <TriangleAlert class="h-5 w-5" />
-          </AppBadge>
-        </template>
-      </StatsCard>
-    </div>
+    <!-- Product stats removed -->
 
     <div v-if="loading" class="grid gap-4 lg:grid-cols-3">
       <div
@@ -256,7 +220,7 @@ onMounted(async () => {
     </div>
 
     <template v-else>
-      <div class="grid gap-4 lg:grid-cols-3">
+      <div class="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
         <AppCard title="System Status" subtitle="Current application health.">
           <div class="space-y-3">
             <div
@@ -387,6 +351,33 @@ onMounted(async () => {
             message="Assign roles to users to see distribution."
           />
         </AppCard>
+
+        <AppCard
+          v-if="canViewVendorStatistics"
+          title="Vendor Status"
+          subtitle="Marketplace vendors by status."
+        >
+          <div v-if="vendorStatisticsLoading && !vendorStatistics" class="space-y-3">
+            <div v-for="row in 5" :key="row" class="h-10 animate-pulse rounded-xl bg-muted" />
+          </div>
+          <p v-else-if="vendorStatisticsError" class="text-sm text-destructive">
+            {{ vendorStatisticsError }}
+          </p>
+          <div v-else class="space-y-2">
+            <div class="flex items-center justify-between rounded-xl bg-muted/60 px-3 py-2.5">
+              <span class="text-sm font-semibold text-card-foreground">Total</span>
+              <AppBadge variant="info">{{ vendorStatistics?.total ?? 0 }}</AppBadge>
+            </div>
+            <div
+              v-for="row in vendorStatusRows"
+              :key="row.label"
+              class="flex items-center justify-between rounded-xl bg-muted/40 px-3 py-2.5"
+            >
+              <span class="text-sm text-muted-foreground">{{ row.label }}</span>
+              <AppBadge :variant="row.variant">{{ row.count }}</AppBadge>
+            </div>
+          </div>
+        </AppCard>
       </div>
 
       <div class="grid gap-4 lg:grid-cols-3">
@@ -464,56 +455,7 @@ onMounted(async () => {
           />
         </AppCard>
 
-        <AppCard title="Recent Products" subtitle="Latest added or updated products.">
-          <div v-if="recentProducts.length > 0" class="space-y-3">
-            <div
-              v-for="product in recentProducts"
-              :key="product.id"
-              class="flex items-center justify-between gap-4 rounded-2xl border border-border bg-muted/40 px-4 py-3 hover:bg-muted"
-            >
-              <div class="flex min-w-0 items-center gap-3">
-                <div
-                  class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-border bg-background text-sm font-bold text-card-foreground"
-                >
-                  <img
-                    v-if="product.image_url"
-                    :src="product.image_url"
-                    :alt="product.name"
-                    class="h-full w-full object-cover"
-                  />
-                  <Package v-else class="h-5 w-5 text-muted-foreground" />
-                </div>
-
-                <div class="min-w-0">
-                  <p class="truncate text-sm font-bold text-card-foreground">
-                    {{ product.name }}
-                  </p>
-                  <p class="truncate text-xs text-muted-foreground">
-                    ${{ Number(product.price).toFixed(2) }}
-                  </p>
-                </div>
-              </div>
-
-              <AppBadge
-                :variant="
-                  product.status === 'active'
-                    ? 'success'
-                    : product.status === 'draft'
-                    ? 'warning'
-                    : 'default'
-                "
-              >
-                {{ product.status }}
-              </AppBadge>
-            </div>
-          </div>
-
-          <EmptyState
-            v-else
-            title="No products yet"
-            message="Products will appear here."
-          />
-        </AppCard>
+        <!-- Recent products removed -->
       </div>
     </template>
 
