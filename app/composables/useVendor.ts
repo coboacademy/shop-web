@@ -26,6 +26,88 @@ export interface VendorProfileResponse {
   }
 }
 
+export interface VendorPagination {
+  current_page: number
+  last_page: number
+  per_page: number
+  total: number
+}
+
+export interface AdminVendorListResponse {
+  status: string
+  message: string
+  data: {
+    vendors: VendorProfile[]
+    pagination: VendorPagination
+  }
+}
+
+export interface AdminVendorFilters {
+  search?: string
+  status?: string
+  country?: string
+  city?: string
+  sort_by?: string
+  sort_direction?: 'asc' | 'desc'
+  page?: number
+  per_page?: number
+}
+
+export interface AdminVendorStatistics {
+  total: number
+  pending: number
+  approved: number
+  rejected: number
+  suspended: number
+}
+
+export interface AdminVendorStatisticsResponse {
+  status?: string
+  message?: string
+  data?: {
+    statistics?: AdminVendorStatistics
+  }
+  statistics?: AdminVendorStatistics
+}
+
+export interface AdminVendorAccount {
+  id?: number | string
+  name?: string
+  email?: string
+  phone?: string
+  status?: string
+}
+
+export interface AdminVendorDetails {
+  vendor: VendorProfile & {
+    updated_at?: string
+    store_count?: number
+    stores_count?: number
+    stores?: Store[]
+  }
+  account?: AdminVendorAccount | null
+  store_count?: number
+  stores?: Store[]
+}
+
+export interface AdminVendorDetailsResponse {
+  status?: string
+  message?: string
+  data?: AdminVendorDetails
+  vendor?: AdminVendorDetails["vendor"]
+  account?: AdminVendorAccount | null
+  store_count?: number
+  stores?: Store[]
+}
+
+export interface AdminVendorActionResponse {
+  status?: string
+  message?: string
+  data?: {
+    vendor?: VendorProfile
+  }
+}
+
 export interface Store {
   id: string
   name: string
@@ -35,6 +117,7 @@ export interface Store {
   description: string
   logo?: string | null
   cover_image?: string | null
+  cover_image_url?: string | null
   country: string
   province: string
   city: string
@@ -84,6 +167,141 @@ export type VendorKycPayload = Omit<
 
 export const useVendor = () => {
   const api = useApi()
+
+  const getAdminVendors = async (
+    params?: AdminVendorFilters
+  ): Promise<AdminVendorListResponse> => {
+    try {
+      const response = await api.get<AdminVendorListResponse>('/admin/vendors', {
+        params,
+      })
+
+      return response.data
+    } catch (error: any) {
+      throw {
+        message: error.response?.data?.message || 'Failed to fetch vendors',
+        errors: error.response?.data?.errors || {},
+        status: error.response?.status || 500,
+      }
+    }
+  }
+
+  const getAdminVendorStatistics = async (): Promise<AdminVendorStatistics> => {
+    try {
+      const response = await api.get<AdminVendorStatisticsResponse>(
+        '/admin/vendors/statistics'
+      )
+      const statistics = response.data.data?.statistics || response.data.statistics
+
+      if (!statistics) {
+        throw new Error('Vendor statistics were missing from the response')
+      }
+
+      return statistics
+    } catch (error: any) {
+      throw {
+        message:
+          error.response?.data?.message ||
+          error.message ||
+          'Failed to fetch vendor statistics',
+        errors: error.response?.data?.errors || {},
+        status: error.response?.status || 500,
+      }
+    }
+  }
+
+  const getAdminVendor = async (id: string): Promise<AdminVendorDetails> => {
+    try {
+      const response = await api.get<AdminVendorDetailsResponse>(`/admin/vendors/${id}`)
+      const payload = response.data.data || response.data
+
+      if ("vendor" in payload && payload.vendor) {
+        return payload as AdminVendorDetails
+      }
+
+      if ("id" in payload) {
+        return { vendor: payload as AdminVendorDetails["vendor"] }
+      }
+
+      throw new Error("Vendor details were missing from the response")
+    } catch (error: any) {
+      throw {
+        message: error.response?.data?.message || error.message || "Failed to fetch vendor details",
+        errors: error.response?.data?.errors || {},
+        status: error.response?.status || 500,
+      }
+    }
+  }
+
+  const approveAdminVendor = async (id: string): Promise<AdminVendorActionResponse> => {
+    try {
+      const response = await api.patch<AdminVendorActionResponse>(
+        `/admin/vendors/${id}/approve`
+      )
+      return response.data
+    } catch (error: any) {
+      throw {
+        message: error.response?.data?.message || "Failed to approve vendor",
+        errors: error.response?.data?.errors || {},
+        status: error.response?.status || 500,
+      }
+    }
+  }
+
+  const rejectAdminVendor = async (
+    id: string,
+    reason: string
+  ): Promise<AdminVendorActionResponse> => {
+    try {
+      const response = await api.patch<AdminVendorActionResponse>(
+        `/admin/vendors/${id}/reject`,
+        { reason }
+      )
+      return response.data
+    } catch (error: any) {
+      throw {
+        message: error.response?.data?.message || "Failed to reject vendor",
+        errors: error.response?.data?.errors || {},
+        status: error.response?.status || 500,
+      }
+    }
+  }
+
+  const suspendAdminVendor = async (
+    id: string,
+    reason: string
+  ): Promise<AdminVendorActionResponse> => {
+    try {
+      const response = await api.patch<AdminVendorActionResponse>(
+        `/admin/vendors/${id}/suspend`,
+        { reason }
+      )
+      return response.data
+    } catch (error: any) {
+      throw {
+        message: error.response?.data?.message || "Failed to suspend vendor",
+        errors: error.response?.data?.errors || {},
+        status: error.response?.status || 500,
+      }
+    }
+  }
+
+  const reactivateAdminVendor = async (
+    id: string
+  ): Promise<AdminVendorActionResponse> => {
+    try {
+      const response = await api.patch<AdminVendorActionResponse>(
+        `/admin/vendors/${id}/reactivate`
+      )
+      return response.data
+    } catch (error: any) {
+      throw {
+        message: error.response?.data?.message || 'Failed to reactivate vendor',
+        errors: error.response?.data?.errors || {},
+        status: error.response?.status || 500,
+      }
+    }
+  }
 
   const getProfile = async (): Promise<VendorProfileResponse> => {
     try {
@@ -264,6 +482,13 @@ export const useVendor = () => {
   }
 
   return {
+    getAdminVendors,
+    getAdminVendorStatistics,
+    getAdminVendor,
+    approveAdminVendor,
+    rejectAdminVendor,
+    suspendAdminVendor,
+    reactivateAdminVendor,
     getProfile,
     updateKyc,
     createStore,

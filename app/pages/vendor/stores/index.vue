@@ -379,9 +379,23 @@ onMounted(fetchStores);
       empty-message="Try changing your filters or add a new store."
     >
       <template #cell-store="{ row }">
-        <div class="min-w-52">
-          <p class="font-semibold text-card-foreground">{{ row.store.name }}</p>
-          <p class="mt-1 text-xs text-muted-foreground">{{ row.store.slug }}</p>
+        <div class="flex min-w-52 items-center gap-3">
+          <img
+            v-if="row.store.logo"
+            :src="row.store.logo"
+            :alt="`${row.store.name} logo`"
+            class="h-10 w-10 shrink-0 rounded-xl border border-border object-cover"
+          />
+          <div
+            v-else
+            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground"
+          >
+            <StoreIcon class="h-5 w-5" />
+          </div>
+          <div>
+            <p class="font-semibold text-card-foreground">{{ row.store.name }}</p>
+            <p class="mt-1 text-xs text-muted-foreground">{{ row.store.slug }}</p>
+          </div>
         </div>
       </template>
       <template #cell-contact="{ row }">

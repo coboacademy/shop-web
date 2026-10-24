@@ -140,12 +140,12 @@ declare global {
   const useNotificationStore: typeof import('../../app/stores/notification').useNotificationStore
   const useNuxtApp: typeof import('../../node_modules/nuxt/dist/app/nuxt').useNuxtApp
   const useNuxtData: typeof import('../../node_modules/nuxt/dist/app/composables/asyncData').useNuxtData
-  const useNuxtDevTools: typeof import('../../node_modules/@nuxt/devtools/dist/runtime/use-nuxt-devtools').useNuxtDevTools
   const usePasswordOtp: typeof import('../../app/composables/usePasswordOtp').usePasswordOtp
   const usePasswordReset: typeof import('../../app/composables/usePasswordReset').usePasswordReset
   const usePermission: typeof import('../../app/composables/usePermission').usePermission
   const usePinia: typeof import('../../node_modules/@pinia/nuxt/dist/runtime/composables').usePinia
   const usePreviewMode: typeof import('../../node_modules/nuxt/dist/app/composables/preview').usePreviewMode
+  const useProduct: typeof import('../../app/composables/useProduct').useProduct
   const useProfile: typeof import('../../app/composables/useProfile').useProfile
   const useRbac: typeof import('../../app/composables/useRbac').useRbac
   const useRequestEvent: typeof import('../../node_modules/nuxt/dist/app/composables/ssr').useRequestEvent
@@ -255,6 +255,9 @@ declare global {
   export type { PermissionItem, PermissionPagination, PermissionListResponse, PermissionPayload, PermissionQueryParams, PermissionStats } from '../../app/composables/usePermission'
   import('../../app/composables/usePermission')
   // @ts-ignore
+  export type { Product, ProductCategory, ProductCategoryTreeResponse, ProductCategorySyncResponse, ProductPagination, ProductListResponse, ProductResponse, ProductInventory, ProductInventoryResponse, ProductInventoryPayload, ProductStockChangePayload, ProductInventoryMovement, ProductInventoryMovementsResponse, VendorInventoryPagination, VendorInventoryListResponse, ProductImage, ProductImagesResponse, ProductImageResponse, ProductVariantOptionValue, ProductOption, ProductOptionsResponse, ProductOptionResponse, ProductOptionPayload, ProductOptionValueResponse, ProductOptionValuesResponse, ProductOptionValuePayload, ProductVariant, ProductVariantsResponse, ProductVariantResponse, ProductVariantPayload, ProductPayload } from '../../app/composables/useProduct'
+  import('../../app/composables/useProduct')
+  // @ts-ignore
   export type { ProfileUser, ProfileResponse, UpdateProfilePayload, UpdatePasswordPayload } from '../../app/composables/useProfile'
   import('../../app/composables/useProfile')
   // @ts-ignore
@@ -270,7 +273,7 @@ declare global {
   export type { UserStatus, UserItem, UserPagination, UserStats, UserListResponse, CreateUserPayload, UpdateUserPayload, CreateUserResponse } from '../../app/composables/useUser'
   import('../../app/composables/useUser')
   // @ts-ignore
-  export type { VendorProfile, VendorProfileResponse, Store, CreateStorePayload, UpdateStorePayload, StoreResponse, StoreListResponse, VendorKycPayload } from '../../app/composables/useVendor'
+  export type { VendorProfile, VendorProfileResponse, VendorPagination, AdminVendorListResponse, AdminVendorFilters, AdminVendorStatistics, AdminVendorStatisticsResponse, AdminVendorAccount, AdminVendorDetails, AdminVendorDetailsResponse, AdminVendorActionResponse, Store, CreateStorePayload, UpdateStorePayload, StoreResponse, StoreListResponse, VendorKycPayload } from '../../app/composables/useVendor'
   import('../../app/composables/useVendor')
   // @ts-ignore
   export type { CacheEntry } from '../../app/utils/cache'
@@ -425,12 +428,12 @@ declare module 'vue' {
     readonly useNotificationStore: UnwrapRef<typeof import('../../app/stores/notification')['useNotificationStore']>
     readonly useNuxtApp: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/nuxt')['useNuxtApp']>
     readonly useNuxtData: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/asyncData')['useNuxtData']>
-    readonly useNuxtDevTools: UnwrapRef<typeof import('../../node_modules/@nuxt/devtools/dist/runtime/use-nuxt-devtools')['useNuxtDevTools']>
     readonly usePasswordOtp: UnwrapRef<typeof import('../../app/composables/usePasswordOtp')['usePasswordOtp']>
     readonly usePasswordReset: UnwrapRef<typeof import('../../app/composables/usePasswordReset')['usePasswordReset']>
     readonly usePermission: UnwrapRef<typeof import('../../app/composables/usePermission')['usePermission']>
     readonly usePinia: UnwrapRef<typeof import('../../node_modules/@pinia/nuxt/dist/runtime/composables')['usePinia']>
     readonly usePreviewMode: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/preview')['usePreviewMode']>
+    readonly useProduct: UnwrapRef<typeof import('../../app/composables/useProduct')['useProduct']>
     readonly useProfile: UnwrapRef<typeof import('../../app/composables/useProfile')['useProfile']>
     readonly useRbac: UnwrapRef<typeof import('../../app/composables/useRbac')['useRbac']>
     readonly useRequestEvent: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/ssr')['useRequestEvent']>

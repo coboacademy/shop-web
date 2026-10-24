@@ -2011,23 +2011,6 @@ async function errorHandler(error, event) {
   // H3 will handle fallback
 }
 
-const script = `
-if (!window.__NUXT_DEVTOOLS_TIME_METRIC__) {
-  Object.defineProperty(window, '__NUXT_DEVTOOLS_TIME_METRIC__', {
-    value: {},
-    enumerable: false,
-    configurable: true,
-  })
-}
-window.__NUXT_DEVTOOLS_TIME_METRIC__.appInit = Date.now()
-`;
-
-const _ecJH5zpTc_pbHP6xz4rHQEIPOnf2F85TB6hfuzGoHA = (function(nitro) {
-  nitro.hooks.hook("render:html", (htmlContext) => {
-    htmlContext.head.push(`<script>${script}<\/script>`);
-  });
-});
-
 const rootDir = "D:/GIT/github/users/coboacademy/shop-web";
 
 const appHead = {"meta":[{"name":"viewport","content":"width=device-width, initial-scale=1"},{"charset":"utf-8"}],"link":[],"style":[],"script":[],"noscript":[]};
@@ -2131,8 +2114,7 @@ function onConsoleLog(callback) {
 }
 
 const plugins = [
-  _ecJH5zpTc_pbHP6xz4rHQEIPOnf2F85TB6hfuzGoHA,
-_6UzFLpUVU_S4Mea1tn2IY1vGYO2LTKzitgmjpbz_IW0,
+  _6UzFLpUVU_S4Mea1tn2IY1vGYO2LTKzitgmjpbz_IW0,
 _wH6JrtIxmaSoA8lCPWFnE9z4lQeXW6H5z3l5aymEQw
 ];
 

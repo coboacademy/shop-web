@@ -585,6 +585,7 @@ onMounted(async () => {
             <AppBadge variant="info" shape="square" size="md">
               <MenuIcon
                 :name="row.name"
+                :icon="row.icon"
                 :label="row.label"
                 :route="row.route"
                 :group="row.group"

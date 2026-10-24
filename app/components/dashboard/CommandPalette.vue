@@ -170,9 +170,6 @@ watch(
 </script>
 
 <template>
-  <span>
-    {{ navigating ? "Navigating..." : "Use search to quickly navigate" }}
-  </span>
   <Teleport to="body">
     <Transition name="command-overlay">
       <div

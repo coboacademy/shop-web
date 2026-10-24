@@ -63,6 +63,10 @@ export const DeleteUserModal: typeof import("../app/components/users/DeleteUserM
 export const EditUserModal: typeof import("../app/components/users/EditUserModal.vue")['default']
 export const UserStatusBadge: typeof import("../app/components/users/UserStatusBadge.vue")['default']
 export const EditStoreModal: typeof import("../app/components/vendor/EditStoreModal.vue")['default']
+export const ProductFilters: typeof import("../app/components/vendor/products/ProductFilters.vue")['default']
+export const ProductStats: typeof import("../app/components/vendor/products/ProductStats.vue")['default']
+export const ProductStatusBadge: typeof import("../app/components/vendor/products/ProductStatusBadge.vue")['default']
+export const ProductTable: typeof import("../app/components/vendor/products/ProductTable.vue")['default']
 export const NuxtWelcome: typeof import("../node_modules/nuxt/dist/app/components/welcome.vue")['default']
 export const NuxtLayout: typeof import("../node_modules/nuxt/dist/app/components/nuxt-layout")['default']
 export const NuxtErrorBoundary: typeof import("../node_modules/nuxt/dist/app/components/nuxt-error-boundary.vue")['default']
@@ -136,6 +140,10 @@ export const LazyDeleteUserModal: LazyComponent<typeof import("../app/components
 export const LazyEditUserModal: LazyComponent<typeof import("../app/components/users/EditUserModal.vue")['default']>
 export const LazyUserStatusBadge: LazyComponent<typeof import("../app/components/users/UserStatusBadge.vue")['default']>
 export const LazyEditStoreModal: LazyComponent<typeof import("../app/components/vendor/EditStoreModal.vue")['default']>
+export const LazyProductFilters: LazyComponent<typeof import("../app/components/vendor/products/ProductFilters.vue")['default']>
+export const LazyProductStats: LazyComponent<typeof import("../app/components/vendor/products/ProductStats.vue")['default']>
+export const LazyProductStatusBadge: LazyComponent<typeof import("../app/components/vendor/products/ProductStatusBadge.vue")['default']>
+export const LazyProductTable: LazyComponent<typeof import("../app/components/vendor/products/ProductTable.vue")['default']>
 export const LazyNuxtWelcome: LazyComponent<typeof import("../node_modules/nuxt/dist/app/components/welcome.vue")['default']>
 export const LazyNuxtLayout: LazyComponent<typeof import("../node_modules/nuxt/dist/app/components/nuxt-layout")['default']>
 export const LazyNuxtErrorBoundary: LazyComponent<typeof import("../node_modules/nuxt/dist/app/components/nuxt-error-boundary.vue")['default']>
