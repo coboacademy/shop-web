@@ -65,3 +65,4 @@ export { useNotificationStore } from '../app/stores/notification';
 export { useThemeStore, ThemeMode } from '../app/stores/theme';
 export { useToastStore, ToastType, ToastItem } from '../app/stores/toast';
 export { defineStore, acceptHMRUpdate, usePinia, storeToRefs } from '../node_modules/@pinia/nuxt/dist/runtime/composables';
+export { useNuxtDevTools } from '../node_modules/@nuxt/devtools/dist/runtime/use-nuxt-devtools';

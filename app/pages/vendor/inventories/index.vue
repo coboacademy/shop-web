@@ -35,7 +35,11 @@ const {
   addProductStock,
   removeProductStock,
   adjustProductStock,
+  addVariantStock,
+  removeVariantStock,
+  adjustVariantStock,
   getProductInventoryMovements,
+  getVariantInventoryMovements,
 } = useProduct();
 const toast = useToast();
 const stores = ref<Store[]>([]);
@@ -55,7 +59,7 @@ const loading = ref(false);
 const error = ref("");
 const stockModalItem = ref<ProductInventory | null>(null);
 const stockAction = ref<StockAction>("add");
-const stockQuantity = ref("");
+const stockQuantity = ref<string | number>("");
 const stockReason = ref("");
 const stockFormError = ref("");
 const savingStock = ref(false);
@@ -210,7 +214,6 @@ const formatDateTime = (value: string) => {
 };
 
 const openStockManager = (item: ProductInventory) => {
-  if (item.variant_id) return;
   stockModalItem.value = item;
   stockAction.value = "add";
   stockQuantity.value = "";
@@ -224,18 +227,26 @@ const closeStockManager = () => {
 
 const saveStockChange = async () => {
   const item = stockModalItem.value;
-  if (!item || item.variant_id) return;
-  const quantity = Number(stockQuantity.value);
-  const reasonRequired = stockAction.value !== "add";
+  if (!item || (item.variant_id && !item.variant_id.trim())) return;
+  const quantityInput = String(stockQuantity.value).trim();
+  const quantity = Number(quantityInput);
+  const reasonRequired = stockAction.value === "remove";
+  const reservedQuantity = item.reserved_quantity ?? 0;
   if (
-    !stockQuantity.value.trim() ||
+    !quantityInput ||
     !Number.isInteger(quantity) ||
     (stockAction.value === "adjust" ? quantity < 0 : quantity <= 0) ||
+    (stockAction.value === "adjust" && quantity < reservedQuantity) ||
     (reasonRequired && !stockReason.value.trim())
   ) {
-    stockFormError.value = reasonRequired
-      ? `Enter a valid whole number${stockAction.value === "adjust" ? "" : " greater than zero"} and a reason for this stock operation.`
-      : "Enter a positive whole-number quantity.";
+    stockFormError.value =
+      stockAction.value === "adjust" && quantity < reservedQuantity
+        ? `New total quantity cannot be below the reserved quantity (${reservedQuantity}).`
+        : reasonRequired
+          ? "Enter a positive whole-number quantity and a reason for removing stock."
+          : stockAction.value === "adjust"
+            ? "Enter a whole-number total quantity that is not below reserved stock."
+            : "Enter a positive whole-number quantity.";
     return;
   }
 
@@ -246,12 +257,18 @@ const saveStockChange = async () => {
       quantity,
       ...(stockReason.value.trim() ? { reason: stockReason.value.trim() } : {}),
     };
-    const response =
-      stockAction.value === "add"
-        ? await addProductStock(item.product_id, payload)
+    const changeStock = item.variant_id
+      ? stockAction.value === "add"
+        ? addVariantStock(item.product_id, item.variant_id, payload)
         : stockAction.value === "remove"
-          ? await removeProductStock(item.product_id, payload)
-          : await adjustProductStock(item.product_id, payload);
+          ? removeVariantStock(item.product_id, item.variant_id, payload)
+          : adjustVariantStock(item.product_id, item.variant_id, payload)
+      : stockAction.value === "add"
+        ? addProductStock(item.product_id, payload)
+        : stockAction.value === "remove"
+          ? removeProductStock(item.product_id, payload)
+          : adjustProductStock(item.product_id, payload);
+    const response = await changeStock;
     toast.success(
       "Inventory updated",
       response.message || "Stock was updated successfully.",
@@ -267,16 +284,20 @@ const saveStockChange = async () => {
 };
 
 const openMovementHistory = async (item: ProductInventory) => {
-  if (item.variant_id) return;
   historyItem.value = item;
   movements.value = [];
   movementError.value = "";
   loadingMovements.value = true;
   try {
-    const response = await getProductInventoryMovements(item.product_id);
-    movements.value = (response.data.movements || []).filter(
-      (movement) => movement.inventory_id === item.id,
-    );
+    if (item.variant_id) {
+      const response = await getVariantInventoryMovements(item.product_id, item.variant_id);
+      movements.value = response.data.movements || [];
+    } else {
+      const response = await getProductInventoryMovements(item.product_id);
+      movements.value = (response.data.movements || []).filter(
+        (movement) => movement.inventory_id === item.id,
+      );
+    }
   } catch (requestError: any) {
     movementError.value = requestError.message || "Could not load stock movement history.";
   } finally {
@@ -465,7 +486,7 @@ onMounted(loadStores);
               </td>
               <td class="px-5 py-4 text-muted-foreground">{{ formatDate(item.updated_at) }}</td>
               <td class="px-5 py-4">
-                <div v-if="!item.variant_id" class="flex justify-end gap-2">
+                <div class="flex justify-end gap-2">
                   <AppButton size="sm" variant="secondary" :disabled="savingStock" @click="openStockManager(item)">
                     Manage stock
                   </AppButton>
@@ -473,9 +494,6 @@ onMounted(loadStores);
                     History
                   </AppButton>
                 </div>
-                <span v-else class="block max-w-48 text-right text-xs text-muted-foreground">
-                  Variant stock actions aren’t supported by this inventory API.
-                </span>
               </td>
             </tr>
           </tbody>
@@ -510,7 +528,7 @@ onMounted(loadStores);
     <AppModal
       :open="!!stockModalItem"
       title="Manage stock"
-      :subtitle="stockModalItem ? `${stockModalItem.product?.name || 'Product'} · SKU ${stockModalItem.sku || stockModalItem.product?.sku || '—'}` : ''"
+      :subtitle="stockModalItem ? `${stockModalItem.product?.name || 'Product'}${stockModalItem.variant_id ? ' · Variant' : ''} · SKU ${stockModalItem.sku || stockModalItem.product?.sku || '—'}` : ''"
       @close="closeStockManager"
     >
       <div v-if="stockModalItem" class="grid grid-cols-3 gap-3">
@@ -574,13 +592,13 @@ onMounted(loadStores);
         </div>
         <div>
           <label for="stock-reason" class="mb-2 block text-sm font-medium text-card-foreground">
-            Reason {{ stockAction === "add" ? "(optional)" : "(required)" }}
+            Reason {{ stockAction === "remove" ? "(required)" : "(optional)" }}
           </label>
           <input
             id="stock-reason"
             v-model="stockReason"
             type="text"
-            :required="stockAction !== 'add'"
+            :required="stockAction === 'remove'"
             :placeholder="stockAction === 'remove' ? 'e.g. Damaged goods' : stockAction === 'adjust' ? 'e.g. Cycle count correction' : 'e.g. Restock received'"
             :disabled="savingStock"
             class="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm text-card-foreground outline-none focus:border-sky-500 focus:ring-4 focus:ring-sky-100 dark:focus:ring-sky-950"
@@ -602,7 +620,7 @@ onMounted(loadStores);
     <AppModal
       :open="!!historyItem"
       title="Stock movement history"
-      :subtitle="historyItem ? `${historyItem.product?.name || 'Product'} · SKU ${historyItem.sku || historyItem.product?.sku || '—'}` : ''"
+      :subtitle="historyItem ? `${historyItem.product?.name || 'Product'}${historyItem.variant_id ? ' · Variant' : ''} · SKU ${historyItem.sku || historyItem.product?.sku || '—'}` : ''"
       size="lg"
       @close="historyItem = null"
     >

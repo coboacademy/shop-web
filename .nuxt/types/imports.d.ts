@@ -140,6 +140,7 @@ declare global {
   const useNotificationStore: typeof import('../../app/stores/notification').useNotificationStore
   const useNuxtApp: typeof import('../../node_modules/nuxt/dist/app/nuxt').useNuxtApp
   const useNuxtData: typeof import('../../node_modules/nuxt/dist/app/composables/asyncData').useNuxtData
+  const useNuxtDevTools: typeof import('../../node_modules/@nuxt/devtools/dist/runtime/use-nuxt-devtools').useNuxtDevTools
   const usePasswordOtp: typeof import('../../app/composables/usePasswordOtp').usePasswordOtp
   const usePasswordReset: typeof import('../../app/composables/usePasswordReset').usePasswordReset
   const usePermission: typeof import('../../app/composables/usePermission').usePermission
@@ -428,6 +429,7 @@ declare module 'vue' {
     readonly useNotificationStore: UnwrapRef<typeof import('../../app/stores/notification')['useNotificationStore']>
     readonly useNuxtApp: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/nuxt')['useNuxtApp']>
     readonly useNuxtData: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/asyncData')['useNuxtData']>
+    readonly useNuxtDevTools: UnwrapRef<typeof import('../../node_modules/@nuxt/devtools/dist/runtime/use-nuxt-devtools')['useNuxtDevTools']>
     readonly usePasswordOtp: UnwrapRef<typeof import('../../app/composables/usePasswordOtp')['usePasswordOtp']>
     readonly usePasswordReset: UnwrapRef<typeof import('../../app/composables/usePasswordReset')['usePasswordReset']>
     readonly usePermission: UnwrapRef<typeof import('../../app/composables/usePermission')['usePermission']>
