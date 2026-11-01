@@ -35,7 +35,7 @@ export { useApi } from '../app/composables/useApi';
 export { useAuditLog, AuditLogUser, AuditLogItem, AuditLogPagination, AuditLogListResponse, AuditLogShowResponse, AuditLogQueryParams } from '../app/composables/useAuditLog';
 export { useAuth } from '../app/composables/useAuth';
 export { useCachedRequest } from '../app/composables/useCachedRequest';
-export { useCategory, CategoryItem, CategoryFilters, CategoryPayload, CategoryListResponse } from '../app/composables/useCategory';
+export { useCategory, CategoryItem, CategoryFilters, CategoryPayload, CategoryListResponse, CategoryTreeResponse, CategoryResourceResponse, CategoryChildrenResponse, CategoryDeleteResponse } from '../app/composables/useCategory';
 export { useCooldown } from '../app/composables/useCooldown';
 export { useCountry, CountryItem, CountryPagination, CountryStats, CountryFilters, CountryPayload, CountryListResponse } from '../app/composables/useCountry';
 export { useDashboard, DashboardStats, DashboardRecentUser, DashboardAuditUser, DashboardRecentAuditLog, DashboardRoleDistribution, DashboardSystem, DashboardSummaryResponse } from '../app/composables/useDashboard';

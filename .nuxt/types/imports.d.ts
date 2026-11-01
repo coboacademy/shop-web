@@ -230,7 +230,7 @@ declare global {
   export type { AuditLogUser, AuditLogItem, AuditLogPagination, AuditLogListResponse, AuditLogShowResponse, AuditLogQueryParams } from '../../app/composables/useAuditLog'
   import('../../app/composables/useAuditLog')
   // @ts-ignore
-  export type { CategoryItem, CategoryFilters, CategoryPayload, CategoryListResponse } from '../../app/composables/useCategory'
+  export type { CategoryItem, CategoryFilters, CategoryPayload, CategoryListResponse, CategoryTreeResponse, CategoryResourceResponse, CategoryChildrenResponse, CategoryDeleteResponse } from '../../app/composables/useCategory'
   import('../../app/composables/useCategory')
   // @ts-ignore
   export type { CountryItem, CountryPagination, CountryStats, CountryFilters, CountryPayload, CountryListResponse } from '../../app/composables/useCountry'
