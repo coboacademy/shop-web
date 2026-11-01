@@ -1,10 +1,16 @@
 <script setup lang="ts">
 import {
+  CalendarDays,
+  Eye,
+  EyeOff,
   FolderTree,
+  House,
   ImagePlus,
+  Loader2,
   Pencil,
   Plus,
   RefreshCcw,
+  Search,
   Trash2,
   Upload,
   X,
@@ -22,6 +28,7 @@ definePageMeta({
 
 const {
   getCategories,
+  getCategory,
   getCategoryTree,
   createCategory,
   updateCategory,
@@ -36,11 +43,14 @@ const toast = useToast();
 const categories = ref<CategoryItem[]>([]);
 const categoryTree = ref<CategoryItem[]>([]);
 const search = ref("");
+const statusFilter = ref<"all" | "active" | "inactive">("all");
+const hierarchyFilter = ref<"all" | "root" | "child">("all");
 const page = ref(1);
 const perPage = ref(15);
 const totalItems = ref(0);
 const lastPage = ref(1);
 const loading = ref(false);
+const categoriesLoaded = ref(false);
 const refreshing = ref(false);
 const saving = ref(false);
 const deleting = ref(false);
@@ -51,6 +61,9 @@ const mediaErrors = reactive<Record<"image" | "icon", string>>({
 });
 const errorMessage = ref("");
 const modalOpen = ref(false);
+const detailOpen = ref(false);
+const detailLoading = ref(false);
+const detailCategory = ref<CategoryItem | null>(null);
 const confirmOpen = ref(false);
 const selectedCategory = ref<CategoryItem | null>(null);
 const confirmCategory = ref<CategoryItem | null>(null);
@@ -79,16 +92,49 @@ const formErrors = reactive<Record<keyof CategoryForm, string>>({
 
 const filteredCategories = computed(() => {
   const query = search.value.trim().toLocaleLowerCase();
-  if (!query) return categories.value;
+  return categories.value.filter((category) => {
+    const matchesSearch =
+      !query ||
+      [category.name, category.slug, category.parent?.name].some(
+        (value) => value?.toLocaleLowerCase().includes(query) ?? false
+      );
+    const matchesStatus =
+      statusFilter.value === "all" ||
+      (statusFilter.value === "active" && category.is_active === true) ||
+      (statusFilter.value === "inactive" && category.is_active === false);
+    const matchesHierarchy =
+      hierarchyFilter.value === "all" ||
+      (hierarchyFilter.value === "root" && category.parent_id === null) ||
+      (hierarchyFilter.value === "child" && category.parent_id !== null);
 
-  return categories.value.filter((category) =>
-    [category.name, category.slug, category.parent?.name]
-      .filter(Boolean)
-      .some((value) => value!.toLocaleLowerCase().includes(query))
-  );
+    return matchesSearch && matchesStatus && matchesHierarchy;
+  });
 });
 
 const categoryCount = computed(() => categories.value.length);
+const hasActiveFilters = computed(
+  () =>
+    Boolean(search.value.trim()) ||
+    statusFilter.value !== "all" ||
+    hierarchyFilter.value !== "all"
+);
+const allTreeCategories = computed(() => {
+  const flattened: CategoryItem[] = [];
+  const visit = (nodes: CategoryItem[]) => {
+    for (const node of nodes) {
+      flattened.push(node);
+      visit(node.children || []);
+    }
+  };
+  visit(categoryTree.value);
+  return flattened;
+});
+const categoryStats = computed(() => ({
+  total: allTreeCategories.value.length,
+  active: allTreeCategories.value.filter((category) => category.is_active === true).length,
+  inactive: allTreeCategories.value.filter((category) => category.is_active === false).length,
+  root: categoryTree.value.length,
+}));
 const parentOptions = computed(() => {
   const excludedIds = new Set<string>();
   const findDescendants = (nodes: CategoryItem[], collect: boolean) => {
@@ -117,12 +163,13 @@ const parentOptions = computed(() => {
 });
 
 const columns = [
-  { key: "category", label: "Category" },
-  { key: "slug", label: "Slug" },
-  { key: "parent", label: "Parent category" },
-  { key: "status", label: "Status" },
-  { key: "created_at", label: "Created" },
-  { key: "actions", label: "Actions", align: "right" as const },
+  { key: "category", label: "Category", width: "22rem" },
+  { key: "media", label: "Media", width: "7rem" },
+  { key: "slug", label: "Slug", width: "12rem" },
+  { key: "parent", label: "Parent category", width: "14rem" },
+  { key: "status", label: "Status", width: "8rem" },
+  { key: "created_at", label: "Created", width: "12rem" },
+  { key: "actions", label: "Actions", align: "right" as const, width: "5rem" },
 ];
 
 const getErrorDetails = (error: unknown) => {
@@ -160,6 +207,7 @@ const fetchCategories = async (silent = false) => {
     totalItems.value = listResponse.data.pagination.total;
     lastPage.value = listResponse.data.pagination.last_page;
     categoryTree.value = treeResponse.data.categories;
+    categoriesLoaded.value = true;
   } catch (error: unknown) {
     errorMessage.value = getErrorDetails(error).message;
     toast.error("Failed to load categories", errorMessage.value);
@@ -200,6 +248,36 @@ const openEdit = (category: CategoryItem) => {
   });
   resetFormErrors();
   modalOpen.value = true;
+};
+
+const openDetails = async (category: CategoryItem) => {
+  detailOpen.value = true;
+  detailLoading.value = true;
+  detailCategory.value = null;
+
+  try {
+    const response = await getCategory(category.id);
+    detailCategory.value = response.data.category;
+  } catch (error: unknown) {
+    detailOpen.value = false;
+    const message = getErrorDetails(error).message;
+    errorMessage.value = message;
+    toast.error("Failed to load category details", message);
+  } finally {
+    detailLoading.value = false;
+  }
+};
+
+const closeDetails = () => {
+  if (detailLoading.value) return;
+  detailOpen.value = false;
+  detailCategory.value = null;
+};
+
+const formatTimestamp = (value?: string | null) => {
+  if (!value) return "";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 };
 
 const closeModal = () => {
@@ -364,6 +442,7 @@ const removeMedia = async (kind: "image" | "icon") => {
 };
 
 const handleCategoryAction = (category: CategoryItem, action: string) => {
+  if (action === "details") void openDetails(category);
   if (action === "edit") openEdit(category);
   if (action === "delete") openDelete(category);
 };
@@ -388,6 +467,8 @@ const goToPage = async (targetPage: number) => {
 
 const resetFilters = () => {
   search.value = "";
+  statusFilter.value = "all";
+  hierarchyFilter.value = "all";
 };
 
 onMounted(() => fetchCategories());
@@ -397,17 +478,24 @@ onMounted(() => fetchCategories());
   <div class="space-y-6">
     <PageHeader
       title="Categories Management"
-      subtitle="Organize product categories and their parent-child relationships."
+      subtitle="Organize your catalog with clear category names and parent relationships."
     >
       <template #actions>
-        <AppButton variant="secondary" :loading="refreshing" @click="fetchCategories(true)">
+        <div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          <AppButton
+            variant="secondary"
+            size="sm"
+            :loading="refreshing"
+            @click="fetchCategories(true)"
+          >
           <RefreshCcw class="h-4 w-4" />
           Refresh
-        </AppButton>
-        <AppButton @click="openCreate">
-          <Plus class="h-4 w-4" />
-          Add Category
-        </AppButton>
+          </AppButton>
+          <AppButton size="sm" @click="openCreate">
+            <Plus class="h-4 w-4" />
+            Add Category
+          </AppButton>
+        </div>
       </template>
     </PageHeader>
 
@@ -421,8 +509,8 @@ onMounted(() => fetchCategories());
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <StatsCard
         title="Total Categories"
-        :value="totalItems"
-        subtitle="All product categories"
+        :value="categoriesLoaded ? categoryStats.total : '—'"
+        subtitle="All categories in the tree"
         tone="info"
       >
         <template #badge>
@@ -431,15 +519,92 @@ onMounted(() => fetchCategories());
           </AppBadge>
         </template>
       </StatsCard>
+
+      <StatsCard
+        title="Active"
+        :value="categoriesLoaded ? categoryStats.active : '—'"
+        subtitle="Across the full tree"
+        tone="success"
+      >
+        <template #badge>
+          <AppBadge variant="success" shape="square" size="md">
+            <Eye class="h-5 w-5" />
+          </AppBadge>
+        </template>
+      </StatsCard>
+
+      <StatsCard
+        title="Inactive"
+        :value="categoriesLoaded ? categoryStats.inactive : '—'"
+        subtitle="Across the full tree"
+        tone="warning"
+      >
+        <template #badge>
+          <AppBadge variant="warning" shape="square" size="md">
+            <EyeOff class="h-5 w-5" />
+          </AppBadge>
+        </template>
+      </StatsCard>
+
+      <StatsCard
+        title="Root Categories"
+        :value="categoriesLoaded ? categoryStats.root : '—'"
+        subtitle="Top-level categories"
+        tone="default"
+      >
+        <template #badge>
+          <AppBadge variant="default" shape="square" size="md">
+            <House class="h-5 w-5" />
+          </AppBadge>
+        </template>
+      </StatsCard>
     </div>
 
     <FilterBar
-      title="Filters"
-      subtitle="Search within the categories on the current page; the API does not provide search."
+      title="Filter categories"
+      subtitle="Search and filters apply only to the currently loaded page; the API does not provide server-side filters."
+      columns="3"
     >
-      <AppInput v-model="search" label="Search current page" placeholder="Search categories..." />
+      <AppInput
+        v-model="search"
+        label="Search categories"
+        placeholder="Search name, slug, or parent..."
+      >
+        <template #icon><Search class="h-4 w-4" /></template>
+      </AppInput>
+      <AppSelect
+        v-model="statusFilter"
+        label="Status"
+        :options="[
+          { label: 'All statuses', value: 'all' },
+          { label: 'Active', value: 'active' },
+          { label: 'Inactive', value: 'inactive' },
+        ]"
+      />
+      <AppSelect
+        v-model="hierarchyFilter"
+        label="Hierarchy"
+        :options="[
+          { label: 'All categories', value: 'all' },
+          { label: 'Root categories', value: 'root' },
+          { label: 'Subcategories', value: 'child' },
+        ]"
+      />
       <template #actions>
-        <AppButton variant="secondary" @click="resetFilters">Reset</AppButton>
+        <div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+          <span class="text-sm text-muted-foreground" aria-live="polite">
+            {{ filteredCategories.length }} of {{ categories.length }} on this page
+          </span>
+          <AppButton
+            v-if="hasActiveFilters"
+            variant="secondary"
+            size="sm"
+            @click="resetFilters"
+          >
+            <X class="h-4 w-4" />
+            Clear filters
+          </AppButton>
+        </div>
       </template>
     </FilterBar>
 
@@ -447,8 +612,12 @@ onMounted(() => fetchCategories());
       :columns="columns"
       :rows="filteredCategories"
       :loading="loading && categoryCount === 0"
-      empty-title="No categories found"
-      empty-message="Create your first product category."
+      :empty-title="hasActiveFilters ? 'No matching categories' : 'No categories yet'"
+      :empty-message="
+        hasActiveFilters
+          ? 'Adjust or clear the search and filters to see more categories on this page.'
+          : 'Create a category to start organizing your catalog.'
+      "
     >
       <template #cell-category="{ row }">
         <div class="flex items-center gap-3">
@@ -470,6 +639,35 @@ onMounted(() => fetchCategories());
         </div>
       </template>
 
+      <template #cell-media="{ row }">
+        <div class="flex items-center gap-2">
+          <div
+            class="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg border border-border bg-background"
+            :title="row.image_url ? 'Category image' : 'No category image'"
+          >
+            <img
+              v-if="row.image_url"
+              :src="row.image_url"
+              :alt="`${row.name} image`"
+              class="h-full w-full object-cover"
+            />
+            <ImagePlus v-else class="h-4 w-4 text-muted-foreground/60" aria-hidden="true" />
+          </div>
+          <div
+            class="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg border border-border bg-background"
+            :title="row.icon_url ? 'Category icon' : 'No category icon'"
+          >
+            <img
+              v-if="row.icon_url"
+              :src="row.icon_url"
+              :alt="`${row.name} icon`"
+              class="h-full w-full object-contain p-1"
+            />
+            <FolderTree v-else class="h-4 w-4 text-muted-foreground/60" aria-hidden="true" />
+          </div>
+        </div>
+      </template>
+
       <template #cell-slug="{ row }">
         <code class="rounded-lg border border-border bg-muted px-2 py-1 text-xs">
           {{ row.slug }}
@@ -477,9 +675,11 @@ onMounted(() => fetchCategories());
       </template>
 
       <template #cell-parent="{ row }">
-        <span class="text-sm text-muted-foreground">
-          {{ row.parent?.name || "Root category" }}
-        </span>
+        <AppBadge v-if="row.parent?.name" variant="default" class="max-w-52">
+          <FolderTree class="h-3.5 w-3.5 shrink-0" />
+          <span class="truncate">{{ row.parent.name }}</span>
+        </AppBadge>
+        <span v-else class="text-sm text-muted-foreground">Root category</span>
       </template>
 
       <template #cell-status="{ row }">
@@ -489,13 +689,19 @@ onMounted(() => fetchCategories());
       </template>
 
       <template #cell-created_at="{ row }">
-        <span class="text-sm text-muted-foreground">{{ row.created_at || "—" }}</span>
+        <span class="text-sm text-muted-foreground">{{ formatTimestamp(row.created_at) || "—" }}</span>
       </template>
 
       <template #cell-actions="{ row }">
         <AppDropdown
           width="w-64"
           :items="[
+            {
+              label: 'View details',
+              value: 'details',
+              icon: Eye,
+              description: 'View category information',
+            },
             {
               label: 'Edit Category',
               value: 'edit',
@@ -535,19 +741,52 @@ onMounted(() => fetchCategories());
       @close="closeModal"
     >
       <template #icon><FolderTree class="h-5 w-5" /></template>
-      <form class="space-y-5" @submit.prevent="saveCategory">
-        <div class="grid gap-5 md:grid-cols-2">
+      <form class="space-y-6" @submit.prevent="saveCategory">
+        <section class="space-y-4">
+          <div>
+            <h3 class="text-sm font-semibold text-card-foreground">Basic information</h3>
+            <p class="mt-1 text-xs text-muted-foreground">
+              Choose a clear name and optional description for this category.
+            </p>
+          </div>
           <AppInput
             v-model="form.name"
-            label="Category name"
+            label="Category name *"
             placeholder="Kitchen"
             :error="formErrors.name"
+            :required="true"
+            :disabled="saving"
           />
+          <label class="block space-y-2 text-sm font-medium text-card-foreground">
+            <span>Description <span class="font-normal text-muted-foreground">(optional)</span></span>
+            <textarea
+              v-model="form.description"
+              rows="3"
+              :disabled="saving"
+              class="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-card-foreground outline-none transition placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-foreground/30 disabled:cursor-not-allowed disabled:opacity-60"
+              placeholder="Describe this category"
+            />
+            <span v-if="formErrors.description" class="block text-xs text-destructive">
+              {{ formErrors.description }}
+            </span>
+          </label>
+        </section>
+
+        <section class="space-y-4 border-t border-border pt-5">
+          <div>
+            <h3 class="text-sm font-semibold text-card-foreground">Hierarchy and status</h3>
+            <p class="mt-1 text-xs text-muted-foreground">
+              Nest this category under another one or keep it at the root.
+            </p>
+          </div>
+          <div class="grid gap-4 md:grid-cols-2">
           <label class="block space-y-2 text-sm font-medium text-card-foreground">
             Parent category
             <select
               v-model="form.parent_id"
-              class="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm"
+              :disabled="saving"
+              class="w-full rounded-xl border border-border bg-background px-3 py-3 text-sm text-card-foreground outline-none transition focus-visible:ring-2 focus-visible:ring-foreground/30 disabled:cursor-not-allowed disabled:opacity-60"
+              aria-label="Parent category"
             >
               <option :value="null">Root category</option>
               <option
@@ -562,121 +801,146 @@ onMounted(() => fetchCategories());
               {{ formErrors.parent_id }}
             </span>
           </label>
-        </div>
-
-        <label class="block space-y-2 text-sm font-medium text-card-foreground">
-          Description
-          <textarea
-            v-model="form.description"
-            rows="3"
-            class="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm"
-            placeholder="Describe this category"
-          />
-          <span v-if="formErrors.description" class="text-xs text-destructive">
-            {{ formErrors.description }}
-          </span>
-        </label>
-
-        <label
-          v-if="selectedCategory"
-          class="flex flex-wrap items-center gap-3 text-sm font-medium text-card-foreground"
-        >
-          <input v-model="form.is_active" type="checkbox" class="h-4 w-4 rounded border-border" />
-          Active category
-          <span v-if="formErrors.is_active" class="w-full text-xs text-destructive">
+            <label
+              v-if="selectedCategory"
+              class="flex items-center gap-3 self-end rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm font-medium text-card-foreground"
+            >
+              <input
+                v-model="form.is_active"
+                type="checkbox"
+                :disabled="saving"
+                class="h-4 w-4 rounded border-border accent-foreground focus-visible:ring-2 focus-visible:ring-foreground/30"
+              />
+              <span>
+                Active category
+                <span class="mt-0.5 block text-xs font-normal text-muted-foreground">
+                  Inactive categories remain visible in the API tree.
+                </span>
+              </span>
+            </label>
+          </div>
+          <p v-if="formErrors.is_active" class="text-xs text-destructive">
             {{ formErrors.is_active }}
-          </span>
-        </label>
+          </p>
+        </section>
 
-        <div v-if="selectedCategory" class="grid gap-4 border-t border-border pt-5 md:grid-cols-2">
-          <div class="space-y-3">
-            <h3 class="text-sm font-semibold text-card-foreground">Category image</h3>
-            <img
-              v-if="selectedCategory.image_url"
-              :src="selectedCategory.image_url"
-              :alt="`${selectedCategory.name} category`"
-              class="h-28 w-full rounded-xl border border-border bg-muted object-contain"
-            />
-            <p v-else class="text-sm text-muted-foreground">
-              {{ selectedCategory.image ? "Image URL is unavailable." : "No image uploaded." }}
-            </p>
-            <div class="flex flex-wrap gap-2">
-              <label
-                class="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm hover:bg-muted"
-                :class="mediaAction ? 'pointer-events-none opacity-50' : ''"
-              >
-                <Upload class="h-4 w-4" />
-                {{ selectedCategory.image ? "Replace image" : "Upload image" }}
-                <input
-                  type="file"
-                  class="sr-only"
-                  accept=".jpg,.jpeg,.png,.webp"
-                  :disabled="!!mediaAction"
-                  @change="uploadMedia('image', $event)"
-                />
-              </label>
-              <AppButton
-                v-if="selectedCategory.image"
-                type="button"
-                variant="secondary"
-                :disabled="!!mediaAction"
-                :loading="mediaAction === 'image'"
-                @click="removeMedia('image')"
-              >
-                <X class="h-4 w-4" />
-                Remove
-              </AppButton>
-            </div>
-            <p class="text-xs text-muted-foreground">JPG, PNG, or WebP; maximum 5 MB.</p>
-            <p v-if="mediaErrors.image" class="text-xs text-destructive">
-              {{ mediaErrors.image }}
+        <section v-if="selectedCategory" class="space-y-4 border-t border-border pt-5">
+          <div>
+            <h3 class="text-sm font-semibold text-card-foreground">Category media</h3>
+            <p class="mt-1 text-xs text-muted-foreground">
+              Upload images and icons to enrich category listings.
             </p>
           </div>
-
-          <div class="space-y-3">
-            <h3 class="text-sm font-semibold text-card-foreground">Category icon</h3>
-            <img
-              v-if="selectedCategory.icon_url"
-              :src="selectedCategory.icon_url"
-              :alt="`${selectedCategory.name} icon`"
-              class="h-28 w-full rounded-xl border border-border bg-muted object-contain"
-            />
-            <p v-else class="text-sm text-muted-foreground">
-              {{ selectedCategory.icon ? "Icon URL is unavailable." : "No icon uploaded." }}
-            </p>
-            <div class="flex flex-wrap gap-2">
-              <label
-                class="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm hover:bg-muted"
-                :class="mediaAction ? 'pointer-events-none opacity-50' : ''"
-              >
-                <ImagePlus class="h-4 w-4" />
-                {{ selectedCategory.icon ? "Replace icon" : "Upload icon" }}
-                <input
-                  type="file"
-                  class="sr-only"
-                  accept=".svg,.png,.webp"
-                  :disabled="!!mediaAction"
-                  @change="uploadMedia('icon', $event)"
-                />
-              </label>
-              <AppButton
-                v-if="selectedCategory.icon"
-                type="button"
-                variant="secondary"
-                :disabled="!!mediaAction"
-                :loading="mediaAction === 'icon'"
-                @click="removeMedia('icon')"
-              >
-                <X class="h-4 w-4" />
-                Remove
-              </AppButton>
+          <div class="grid gap-4 md:grid-cols-2">
+            <div class="space-y-3 rounded-2xl border border-border bg-muted/30 p-4">
+              <h4 class="text-sm font-semibold text-card-foreground">Image</h4>
+              <img
+                v-if="selectedCategory.image_url"
+                :src="selectedCategory.image_url"
+                :alt="`${selectedCategory.name} category`"
+                class="h-28 w-full rounded-xl border border-border bg-background object-contain"
+              />
+              <p v-else class="text-sm text-muted-foreground">
+                {{ selectedCategory.image ? "Image URL is unavailable." : "No image uploaded." }}
+              </p>
+              <div class="flex flex-wrap gap-2">
+                <label
+                  class="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm text-card-foreground transition hover:bg-muted focus-within:ring-2 focus-within:ring-foreground/30"
+                  :class="mediaAction ? 'pointer-events-none opacity-50' : ''"
+                  :aria-busy="mediaAction === 'image'"
+                >
+                  <Loader2 v-if="mediaAction === 'image'" class="h-4 w-4 animate-spin" />
+                  <Upload v-else class="h-4 w-4" />
+                  {{
+                    mediaAction === "image"
+                      ? "Uploading image..."
+                      : selectedCategory.image
+                      ? "Replace image"
+                      : "Upload image"
+                  }}
+                  <input
+                    type="file"
+                    class="sr-only"
+                    aria-label="Upload category image"
+                    accept=".jpg,.jpeg,.png,.webp"
+                    :disabled="!!mediaAction || saving"
+                    @change="uploadMedia('image', $event)"
+                  />
+                </label>
+                <AppButton
+                  v-if="selectedCategory.image"
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  :disabled="!!mediaAction || saving"
+                  :loading="mediaAction === 'image'"
+                  @click="removeMedia('image')"
+                >
+                  <X class="h-4 w-4" />
+                  Remove
+                </AppButton>
+              </div>
+              <p class="text-xs text-muted-foreground">JPG, PNG, or WebP; maximum 5 MB.</p>
+              <p v-if="mediaErrors.image" class="text-xs text-destructive">
+                {{ mediaErrors.image }}
+              </p>
             </div>
-            <p class="text-xs text-muted-foreground">SVG, PNG, or WebP; maximum 2 MB.</p>
-            <p v-if="mediaErrors.icon" class="text-xs text-destructive">
-              {{ mediaErrors.icon }}
-            </p>
+
+            <div class="space-y-3 rounded-2xl border border-border bg-muted/30 p-4">
+              <h4 class="text-sm font-semibold text-card-foreground">Icon</h4>
+              <img
+                v-if="selectedCategory.icon_url"
+                :src="selectedCategory.icon_url"
+                :alt="`${selectedCategory.name} icon`"
+                class="h-28 w-full rounded-xl border border-border bg-background object-contain"
+              />
+              <p v-else class="text-sm text-muted-foreground">
+                {{ selectedCategory.icon ? "Icon URL is unavailable." : "No icon uploaded." }}
+              </p>
+              <div class="flex flex-wrap gap-2">
+                <label
+                  class="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm text-card-foreground transition hover:bg-muted focus-within:ring-2 focus-within:ring-foreground/30"
+                  :class="mediaAction ? 'pointer-events-none opacity-50' : ''"
+                  :aria-busy="mediaAction === 'icon'"
+                >
+                  <Loader2 v-if="mediaAction === 'icon'" class="h-4 w-4 animate-spin" />
+                  <ImagePlus v-else class="h-4 w-4" />
+                  {{
+                    mediaAction === "icon"
+                      ? "Uploading icon..."
+                      : selectedCategory.icon
+                      ? "Replace icon"
+                      : "Upload icon"
+                  }}
+                  <input
+                    type="file"
+                    class="sr-only"
+                    aria-label="Upload category icon"
+                    accept=".svg,.png,.webp"
+                    :disabled="!!mediaAction || saving"
+                    @change="uploadMedia('icon', $event)"
+                  />
+                </label>
+                <AppButton
+                  v-if="selectedCategory.icon"
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  :disabled="!!mediaAction || saving"
+                  :loading="mediaAction === 'icon'"
+                  @click="removeMedia('icon')"
+                >
+                  <X class="h-4 w-4" />
+                  Remove
+                </AppButton>
+              </div>
+              <p class="text-xs text-muted-foreground">SVG, PNG, or WebP; maximum 2 MB.</p>
+              <p v-if="mediaErrors.icon" class="text-xs text-destructive">
+                {{ mediaErrors.icon }}
+              </p>
+            </div>
           </div>
-        </div>
+        </section>
 
         <div class="flex justify-end gap-3 border-t border-border pt-5">
           <AppButton
@@ -692,6 +956,97 @@ onMounted(() => fetchCategories());
           </AppButton>
         </div>
       </form>
+    </AppModal>
+
+    <AppModal
+      :open="detailOpen"
+      title="Category details"
+      subtitle="Category information from the latest API response."
+      size="md"
+      @close="closeDetails"
+    >
+      <template #icon><Eye class="h-5 w-5" /></template>
+      <div v-if="detailLoading" class="flex items-center justify-center gap-3 py-12 text-sm text-muted-foreground" aria-live="polite">
+        <Loader2 class="h-5 w-5 animate-spin" />
+        Loading category details...
+      </div>
+      <div v-else-if="detailCategory" class="space-y-5">
+        <div class="flex items-start gap-4">
+          <img
+            v-if="detailCategory.image_url"
+            :src="detailCategory.image_url"
+            :alt="`${detailCategory.name} category image`"
+            class="h-20 w-20 shrink-0 rounded-2xl border border-border bg-muted object-cover"
+          />
+          <AppBadge v-else variant="info" shape="square" size="lg">
+            <FolderTree class="h-6 w-6" />
+          </AppBadge>
+          <div class="min-w-0 flex-1">
+            <h3 class="break-words text-lg font-semibold text-card-foreground">
+              {{ detailCategory.name }}
+            </h3>
+            <code class="mt-1 inline-block break-all text-xs text-muted-foreground">
+              {{ detailCategory.slug }}
+            </code>
+            <AppBadge
+              class="mt-3"
+              :variant="detailCategory.is_active ? 'success' : 'default'"
+            >
+              {{ detailCategory.is_active ? "Active" : "Inactive" }}
+            </AppBadge>
+          </div>
+          <img
+            v-if="detailCategory.icon_url"
+            :src="detailCategory.icon_url"
+            :alt="`${detailCategory.name} icon`"
+            class="h-12 w-12 shrink-0 rounded-xl border border-border bg-background object-contain p-1"
+          />
+        </div>
+
+        <dl class="grid gap-4 rounded-2xl border border-border bg-muted/30 p-4 sm:grid-cols-2">
+          <div>
+            <dt class="text-xs font-medium text-muted-foreground">Parent category</dt>
+            <dd class="mt-1 text-sm font-medium text-card-foreground">
+              {{ detailCategory.parent?.name || "Root category" }}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-xs font-medium text-muted-foreground">Category ID</dt>
+            <dd class="mt-1 break-all font-mono text-xs text-card-foreground">
+              {{ detailCategory.id }}
+            </dd>
+          </div>
+          <div v-if="detailCategory.created_at">
+            <dt class="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+              <CalendarDays class="h-3.5 w-3.5" />
+              Created
+            </dt>
+            <dd class="mt-1 text-sm text-card-foreground">
+              {{ formatTimestamp(detailCategory.created_at) }}
+            </dd>
+          </div>
+          <div v-if="detailCategory.updated_at">
+            <dt class="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+              <CalendarDays class="h-3.5 w-3.5" />
+              Last updated
+            </dt>
+            <dd class="mt-1 text-sm text-card-foreground">
+              {{ formatTimestamp(detailCategory.updated_at) }}
+            </dd>
+          </div>
+        </dl>
+
+        <div>
+          <h3 class="text-xs font-medium text-muted-foreground">Description</h3>
+          <p class="mt-1 whitespace-pre-wrap text-sm text-card-foreground">
+            {{ detailCategory.description || "No description provided." }}
+          </p>
+        </div>
+
+        <div class="flex justify-end border-t border-border pt-4">
+          <AppButton variant="secondary" size="sm" @click="closeDetails">Close</AppButton>
+        </div>
+      </div>
     </AppModal>
 
     <ConfirmDialog
