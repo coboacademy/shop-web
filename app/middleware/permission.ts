@@ -33,8 +33,12 @@ export default defineNuxtRouteMiddleware(async (to) => {
   const requiredPermission = typeof to.meta?.permission === 'string'
     ? to.meta.permission
     : null
+  const isVendorManagementRoute =
+    to.path === '/admin/vendors' || to.path.startsWith('/admin/vendors/')
+  const canAccessVendorManagement =
+    isVendorManagementRoute && authStore.hasPermission('vendors.view')
 
-  if (to.path.startsWith('/admin') && !hasAdminAccess) {
+  if (to.path.startsWith('/admin') && !hasAdminAccess && !canAccessVendorManagement) {
     return navigateTo(isVendor ? '/vendor/dashboard' : '/app')
   }
 

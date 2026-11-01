@@ -28,8 +28,7 @@ const visibleNavigation = computed<MenuItem[]>(() => {
   const navigation = [...menus];
 
   if (
-    authStore.hasPermission("dashboard.view") &&
-    authStore.hasPermission("vendor.view") &&
+    authStore.hasPermission("vendors.view") &&
     !navigation.some((item) => item.route === "/admin/vendors")
   ) {
     navigation.push({
