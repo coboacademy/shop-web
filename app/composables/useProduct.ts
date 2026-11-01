@@ -26,6 +26,7 @@ export interface ProductCategory {
   description?: string | null;
   image?: string | null;
   image_url?: string | null;
+  icon?: string | null;
   is_active?: boolean;
   children?: ProductCategory[];
 }

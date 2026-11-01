@@ -113,6 +113,7 @@ declare global {
   const useAuthStore: typeof import('../../app/stores/auth').useAuthStore
   const useCachedRequest: typeof import('../../app/composables/useCachedRequest').useCachedRequest
   const useCartStore: typeof import('../../app/stores/cart').useCartStore
+  const useCategory: typeof import('../../app/composables/useCategory').useCategory
   const useCookie: typeof import('../../node_modules/nuxt/dist/app/composables/cookie').useCookie
   const useCooldown: typeof import('../../app/composables/useCooldown').useCooldown
   const useCountry: typeof import('../../app/composables/useCountry').useCountry
@@ -228,6 +229,9 @@ declare global {
   // @ts-ignore
   export type { AuditLogUser, AuditLogItem, AuditLogPagination, AuditLogListResponse, AuditLogShowResponse, AuditLogQueryParams } from '../../app/composables/useAuditLog'
   import('../../app/composables/useAuditLog')
+  // @ts-ignore
+  export type { CategoryItem, CategoryFilters, CategoryPayload, CategoryListResponse } from '../../app/composables/useCategory'
+  import('../../app/composables/useCategory')
   // @ts-ignore
   export type { CountryItem, CountryPagination, CountryStats, CountryFilters, CountryPayload, CountryListResponse } from '../../app/composables/useCountry'
   import('../../app/composables/useCountry')
@@ -402,6 +406,7 @@ declare module 'vue' {
     readonly useAuthStore: UnwrapRef<typeof import('../../app/stores/auth')['useAuthStore']>
     readonly useCachedRequest: UnwrapRef<typeof import('../../app/composables/useCachedRequest')['useCachedRequest']>
     readonly useCartStore: UnwrapRef<typeof import('../../app/stores/cart')['useCartStore']>
+    readonly useCategory: UnwrapRef<typeof import('../../app/composables/useCategory')['useCategory']>
     readonly useCookie: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/cookie')['useCookie']>
     readonly useCooldown: UnwrapRef<typeof import('../../app/composables/useCooldown')['useCooldown']>
     readonly useCountry: UnwrapRef<typeof import('../../app/composables/useCountry')['useCountry']>
