@@ -20,6 +20,9 @@ const { sendPasswordOtp, verifyPasswordOtp, resetPasswordWithOtp } = usePassword
 
 const toast = useToast();
 const resendCooldown = useCooldown(60);
+const route = useRoute();
+const isVendorFlow = computed(() => route.query.audience === "vendor");
+const loginPath = computed(() => isVendorFlow.value ? "/vendor/login" : "/login");
 
 type Step = "email" | "otp" | "reset" | "done";
 
@@ -36,6 +39,9 @@ const form = reactive({
   password_confirmation: "",
 });
 
+const otpRequestNotice =
+  "If an account exists for this email, a 6-digit code will arrive shortly. It expires after 10 minutes; you can request another code if needed.";
+
 const errors = reactive<Record<string, string>>({
   email: "",
   otp: "",
@@ -46,8 +52,10 @@ const errors = reactive<Record<string, string>>({
 const stepMeta = computed(() => {
   return {
     email: {
-      title: "Forgot password?",
-      subtitle: "Enter your email address and we will send you a 6-digit OTP code.",
+      title: isVendorFlow.value ? "Reset your vendor password" : "Forgot password?",
+      subtitle: isVendorFlow.value
+        ? "Enter the email address for your vendor account and we will send a 6-digit OTP code."
+        : "Enter your email address and we will send you a 6-digit OTP code.",
       icon: Mail,
     },
     otp: {
@@ -77,6 +85,13 @@ const resetErrors = () => {
   });
 };
 
+const showOtpRequestNotice = () => {
+  message.value = otpRequestNotice;
+  step.value = "otp";
+  resendCooldown.start();
+  toast.success("Check your email", otpRequestNotice);
+};
+
 watch(
   () => form.otp,
   (value) => {
@@ -102,6 +117,13 @@ const handleVerifyOtp = async () => {
     toast.success("OTP verified", response.message);
     step.value = "reset";
   } catch (error: any) {
+    if (error.status === 422) {
+      generalError.value =
+        "We couldn't verify that code. It may be invalid or expired. Request a new code and try again.";
+      toast.error("Verification failed", generalError.value);
+      return;
+    }
+
     generalError.value = error.message || "Failed to verify OTP";
     toast.error("Failed", generalError.value);
 
@@ -129,6 +151,18 @@ const handleResetPassword = async () => {
     toast.success("Password reset", response.message);
     step.value = "done";
   } catch (error: any) {
+    if (error.status === 422) {
+      generalError.value =
+        "We couldn't reset the password with those details. Check your password fields or request a new code.";
+      toast.error("Password reset failed", generalError.value);
+      errors.otp = error.errors?.otp
+        ? "The code may be invalid or expired. Request a new code and try again."
+        : "";
+      errors.password = error.errors?.password?.[0] || "";
+      errors.password_confirmation = error.errors?.password_confirmation?.[0] || "";
+      return;
+    }
+
     generalError.value = error.message || "Failed to reset password";
     toast.error("Failed", generalError.value);
 
@@ -147,16 +181,17 @@ const handleSendOtp = async () => {
   resetErrors();
 
   try {
-    const response = await sendPasswordOtp({
+    await sendPasswordOtp({
       email: form.email,
     });
 
-    message.value = response.message;
-    toast.success("OTP sent", response.message);
-    step.value = "otp";
-
-    resendCooldown.start();
+    showOtpRequestNotice();
   } catch (error: any) {
+    if (error.status === 422 && error.errors?.email) {
+      showOtpRequestNotice();
+      return;
+    }
+
     generalError.value = error.message || "Failed to send OTP";
     toast.error("Failed", generalError.value);
 
@@ -238,6 +273,7 @@ const goBack = () => {
           <input
             v-model="form.email"
             type="email"
+            required
             placeholder="Enter your email"
             class="w-full rounded-xl border border-slate-200 py-3 pl-12 pr-4 text-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
           />
@@ -269,9 +305,7 @@ const goBack = () => {
           <div>
             <p class="text-sm font-semibold text-blue-900">Check your email</p>
             <AlertMessage type="info" title="Check your email">
-              We sent a 6-digit OTP code to
-              <strong>{{ form.email }}</strong
-              >.
+              {{ otpRequestNotice }}
             </AlertMessage>
           </div>
         </div>
@@ -343,6 +377,7 @@ const goBack = () => {
         type="password"
         placeholder="Enter new password"
         :error="errors.password"
+        :minlength="6"
         required
       />
 
@@ -352,6 +387,7 @@ const goBack = () => {
         type="password"
         placeholder="Confirm new password"
         :error="errors.password_confirmation"
+        :minlength="6"
         required
       />
 
@@ -374,7 +410,7 @@ const goBack = () => {
         message="Your password has been updated successfully. You can now log in with your new password."
       />
       <NuxtLink
-        to="/login"
+        :to="loginPath"
         class="block w-full rounded-xl bg-slate-900 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-slate-800"
       >
         Back to Login
@@ -397,7 +433,7 @@ const goBack = () => {
 
       <NuxtLink
         v-if="step !== 'done'"
-        to="/login"
+        :to="loginPath"
         class="font-semibold text-blue-600 hover:text-blue-700"
       >
         Sign in

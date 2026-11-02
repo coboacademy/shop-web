@@ -56,6 +56,20 @@ const visibleNavigation = computed<MenuItem[]>(() => {
     });
   }
 
+  if (isVendor && !navigation.some((item) => item.route === "/vendor/orders")) {
+    navigation.push({
+      id: -3,
+      name: "shopping-bag",
+      label: "Order Management",
+      icon: "ShoppingBag",
+      route: "/vendor/orders",
+      group: "Account",
+      sort_order: 998,
+      is_active: true,
+      is_system: true,
+    });
+  }
+
   return navigation;
 });
 

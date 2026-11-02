@@ -3,14 +3,14 @@ export interface VendorProfile {
   user_id?: number | string
   business_name: string
   slug?: string
-  email?: string
-  phone?: string
-  description?: string
-  website?: string
-  country?: string
-  province?: string
-  city?: string
-  address?: string
+  email?: string | null
+  phone?: string | null
+  description?: string | null
+  website?: string | null
+  country?: string | null
+  province?: string | null
+  city?: string | null
+  address?: string | null
   logo?: string | null
   cover_image?: string | null
   status?: string
@@ -174,10 +174,17 @@ export interface StoreListResponse {
   }
 }
 
-export type VendorKycPayload = Omit<
-  VendorProfile,
-  'id' | 'user_id' | 'slug' | 'email' | 'logo' | 'cover_image' | 'status' | 'verified_at' | 'created_at'
->
+export interface VendorProfileUpdatePayload {
+  business_name: string
+  email: string
+  phone: string | null
+  description: string | null
+  website: string | null
+  country: string | null
+  province: string | null
+  city: string | null
+  address: string | null
+}
 
 export const useVendor = () => {
   const api = useApi()
@@ -326,13 +333,15 @@ export const useVendor = () => {
     }
   }
 
-  const updateKyc = async (payload: VendorKycPayload): Promise<VendorProfileResponse> => {
+  const updateProfile = async (
+    payload: VendorProfileUpdatePayload
+  ): Promise<VendorProfileResponse> => {
     try {
-      const response = await api.put<VendorProfileResponse>('/vendor/kyc', payload)
+      const response = await api.put<VendorProfileResponse>('/vendor/profile', payload)
       return response.data
     } catch (error: any) {
       throw {
-        message: error.response?.data?.message || 'Failed to update vendor KYC',
+        message: error.response?.data?.message || 'Failed to update vendor profile',
         errors: error.response?.data?.errors || {},
         status: error.response?.status || 500,
       }
@@ -500,7 +509,7 @@ export const useVendor = () => {
     suspendAdminVendor,
     reactivateAdminVendor,
     getProfile,
-    updateKyc,
+    updateProfile,
     createStore,
     getStore,
     getStores,

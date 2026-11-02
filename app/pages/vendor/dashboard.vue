@@ -2,13 +2,14 @@
 import {
   ArrowUpRight,
   CreditCard,
-  Package,
+  Clock3,
   ShoppingCart,
   ShieldCheck,
   Store,
-  TrendingUp,
+  Truck,
   Users,
 } from "lucide-vue-next";
+import { useVendorOrder, type VendorOrder } from "~/composables/useVendorOrder";
 
 definePageMeta({
   layout: "vendor",
@@ -19,47 +20,22 @@ definePageMeta({
 
 const authStore = useAuthStore();
 const { getProfile } = useVendor();
+const { getOrders } = useVendorOrder();
 const user = computed(() => authStore.user);
 const vendor = ref<any>(null);
 const loadingVendor = ref(false);
 const showKycWarning = computed(() => !vendor.value);
-
-const stats = [
-  {
-    title: "Products",
-    value: 18,
-    subtitle: "Active listings",
-    icon: Package,
-    tone: "info",
-  },
-  {
-    title: "Orders",
-    value: 42,
-    subtitle: "This month",
-    icon: ShoppingCart,
-    tone: "success",
-  },
-  {
-    title: "Revenue",
-    value: "$4.8K",
-    subtitle: "Gross sales",
-    icon: TrendingUp,
-    tone: "warning",
-  },
-  {
-    title: "Customers",
-    value: 128,
-    subtitle: "Returning buyers",
-    icon: Users,
-    tone: "default",
-  },
-];
-
-const recentOrders = [
-  { id: "#1042", customer: "Lina Brooks", total: "$128.00", status: "Paid" },
-  { id: "#1041", customer: "Derek Park", total: "$84.50", status: "Processing" },
-  { id: "#1040", customer: "Maya Scott", total: "$240.00", status: "Shipped" },
-];
+const latestPageOrders = ref<VendorOrder[]>([]);
+const recentOrders = ref<VendorOrder[]>([]);
+const orderTotal = ref(0);
+const loadingOrders = ref(false);
+const ordersError = ref("");
+const orderStats = computed(() => ({
+  pending: latestPageOrders.value.filter((order) => order.status === "pending").length,
+  fulfilling: latestPageOrders.value.filter(
+    (order) => order.status === "confirmed" || order.status === "processing",
+  ).length,
+}));
 
 const quickActions = [
   { title: "Manage products", to: "/vendor/products", icon: Store, tone: "info" },
@@ -84,9 +60,37 @@ const fetchVendorProfile = async () => {
   }
 };
 
-onMounted(async () => {
-  await fetchVendorProfile();
-});
+const fetchRecentOrders = async () => {
+  loadingOrders.value = true;
+  ordersError.value = "";
+
+  try {
+    const response = await getOrders(1);
+    latestPageOrders.value = response.data.orders.data;
+    recentOrders.value = latestPageOrders.value.slice(0, 3);
+    orderTotal.value = response.data.orders.meta.total;
+  } catch (error: any) {
+    ordersError.value = error.message || "Could not load recent orders.";
+  } finally {
+    loadingOrders.value = false;
+  }
+};
+
+onMounted(() => Promise.all([fetchVendorProfile(), fetchRecentOrders()]));
+
+const formatOrderAmount = (value: string) => {
+  const amount = Number(value);
+  return Number.isFinite(amount)
+    ? amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : value;
+};
+
+const statusVariant = (status: VendorOrder["status"]) => {
+  if (status === "delivered") return "success";
+  if (status === "cancelled") return "danger";
+  if (status === "confirmed" || status === "processing") return "info";
+  return "warning";
+};
 </script>
 
 <template>
@@ -119,40 +123,65 @@ onMounted(async () => {
       </template>
     </PageHeader>
 
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="grid gap-4 sm:grid-cols-3">
+      <StatsCard title="Total orders" :value="orderTotal" subtitle="All vendor orders" tone="info">
+        <template #badge>
+          <AppBadge variant="info" shape="square" size="md">
+            <ShoppingCart class="h-5 w-5" />
+          </AppBadge>
+        </template>
+      </StatsCard>
       <StatsCard
-        v-for="item in stats"
-        :key="item.title"
-        :title="item.title"
-        :value="item.value"
-        :subtitle="item.subtitle"
-        :tone="item.tone as any"
+        title="Pending"
+        :value="orderStats.pending"
+        subtitle="On latest page"
+        tone="warning"
       >
         <template #badge>
-          <AppBadge :variant="item.tone as any" shape="square" size="md">
-            <component :is="item.icon" class="h-5 w-5" />
+          <AppBadge variant="warning" shape="square" size="md">
+            <Clock3 class="h-5 w-5" />
+          </AppBadge>
+        </template>
+      </StatsCard>
+      <StatsCard
+        title="In fulfillment"
+        :value="orderStats.fulfilling"
+        subtitle="Confirmed or processing · latest page"
+        tone="success"
+      >
+        <template #badge>
+          <AppBadge variant="success" shape="square" size="md">
+            <Truck class="h-5 w-5" />
           </AppBadge>
         </template>
       </StatsCard>
     </div>
 
     <div class="grid gap-4 lg:grid-cols-[1.4fr_0.9fr]">
-      <AppCard title="Recent orders" subtitle="Latest customer purchases">
-        <div class="space-y-3">
+      <AppCard title="Recent orders" subtitle="Latest orders containing your products">
+        <div v-if="ordersError" class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
+          {{ ordersError }}
+        </div>
+        <div v-else-if="loadingOrders" class="space-y-3">
+          <div v-for="index in 3" :key="index" class="h-16 animate-pulse rounded-2xl bg-muted" />
+        </div>
+        <div v-else-if="recentOrders.length" class="space-y-3">
           <div
             v-for="order in recentOrders"
             :key="order.id"
             class="flex items-center justify-between rounded-2xl border border-border bg-muted/40 px-4 py-3"
           >
             <div>
-              <p class="font-semibold text-card-foreground">{{ order.id }}</p>
-              <p class="text-sm text-muted-foreground">{{ order.customer }}</p>
+              <p class="font-semibold text-card-foreground">{{ order.order_number }}</p>
+              <p class="text-sm text-muted-foreground">{{ order.shipping.name }}</p>
             </div>
 
             <div class="text-right">
-              <p class="font-semibold text-card-foreground">{{ order.total }}</p>
+              <p class="font-semibold text-card-foreground">
+                {{ formatOrderAmount(order.items.reduce((total, item) => total + Number(item.total || 0), 0)) }}
+              </p>
               <AppBadge
-                :variant="order.status === 'Paid' ? 'success' : order.status === 'Shipped' ? 'info' : 'warning'"
+                :variant="statusVariant(order.status)"
                 size="sm"
               >
                 {{ order.status }}
@@ -160,6 +189,20 @@ onMounted(async () => {
             </div>
           </div>
         </div>
+        <EmptyState
+          v-else
+          title="No orders yet"
+          message="Orders containing your products will appear here."
+        />
+        <template #footer>
+          <NuxtLink
+            to="/vendor/orders"
+            class="inline-flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400"
+          >
+            View all orders
+            <ArrowUpRight class="h-4 w-4" />
+          </NuxtLink>
+        </template>
       </AppCard>
 
       <AppCard title="Quick actions" subtitle="Common operations">

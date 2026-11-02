@@ -89,6 +89,7 @@ const handleRegister = async () => {
         type="password"
         placeholder="Create password"
         :error="errors.password"
+        :minlength="6"
         required
       />
 

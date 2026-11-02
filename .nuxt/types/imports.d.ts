@@ -207,6 +207,7 @@ declare global {
   const useTransitionState: typeof import('vue').useTransitionState
   const useUser: typeof import('../../app/composables/useUser').useUser
   const useVendor: typeof import('../../app/composables/useVendor').useVendor
+  const useVendorOrder: typeof import('../../app/composables/useVendorOrder').useVendorOrder
   const watch: typeof import('vue').watch
   const watchEffect: typeof import('vue').watchEffect
   const watchPostEffect: typeof import('vue').watchPostEffect
@@ -278,8 +279,11 @@ declare global {
   export type { UserStatus, UserItem, UserPagination, UserStats, UserListResponse, CreateUserPayload, UpdateUserPayload, CreateUserResponse } from '../../app/composables/useUser'
   import('../../app/composables/useUser')
   // @ts-ignore
-  export type { VendorProfile, VendorProfileResponse, VendorPagination, AdminVendorListResponse, AdminVendorFilters, AdminVendorStatistics, AdminVendorStatisticsResponse, AdminVendorAccount, AdminVendorDetails, AdminVendorDetailsResponse, AdminVendorActionResponse, Store, CreateStorePayload, UpdateStorePayload, StoreResponse, StoreListResponse, VendorKycPayload } from '../../app/composables/useVendor'
+  export type { VendorProfile, AdminVendorUser, AdminVendorStatus, AdminVendorStore, AdminVendor, VendorProfileResponse, VendorPagination, AdminVendorListResponse, AdminVendorFilters, AdminVendorStatistics, AdminVendorStatisticsResponse, AdminVendorDetails, AdminVendorDetailsResponse, AdminVendorActionResponse, Store, CreateStorePayload, UpdateStorePayload, StoreResponse, StoreListResponse, VendorProfileUpdatePayload } from '../../app/composables/useVendor'
   import('../../app/composables/useVendor')
+  // @ts-ignore
+  export type { VendorOrderStatus, VendorOrderItem, VendorOrderShipping, VendorOrder, VendorOrderPagination, VendorOrderListResponse, VendorOrderResponse } from '../../app/composables/useVendorOrder'
+  import('../../app/composables/useVendorOrder')
   // @ts-ignore
   export type { CacheEntry } from '../../app/utils/cache'
   import('../../app/utils/cache')
@@ -500,6 +504,7 @@ declare module 'vue' {
     readonly useTransitionState: UnwrapRef<typeof import('vue')['useTransitionState']>
     readonly useUser: UnwrapRef<typeof import('../../app/composables/useUser')['useUser']>
     readonly useVendor: UnwrapRef<typeof import('../../app/composables/useVendor')['useVendor']>
+    readonly useVendorOrder: UnwrapRef<typeof import('../../app/composables/useVendorOrder')['useVendorOrder']>
     readonly watch: UnwrapRef<typeof import('vue')['watch']>
     readonly watchEffect: UnwrapRef<typeof import('vue')['watchEffect']>
     readonly watchPostEffect: UnwrapRef<typeof import('vue')['watchPostEffect']>
