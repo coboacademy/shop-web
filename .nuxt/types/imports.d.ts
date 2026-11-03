@@ -112,8 +112,10 @@ declare global {
   const useAuth: typeof import('../../app/composables/useAuth').useAuth
   const useAuthStore: typeof import('../../app/stores/auth').useAuthStore
   const useCachedRequest: typeof import('../../app/composables/useCachedRequest').useCachedRequest
+  const useCart: typeof import('../../app/composables/useCart').useCart
   const useCartStore: typeof import('../../app/stores/cart').useCartStore
   const useCategory: typeof import('../../app/composables/useCategory').useCategory
+  const useCheckout: typeof import('../../app/composables/useCheckout').useCheckout
   const useCookie: typeof import('../../node_modules/nuxt/dist/app/composables/cookie').useCookie
   const useCooldown: typeof import('../../app/composables/useCooldown').useCooldown
   const useCountry: typeof import('../../app/composables/useCountry').useCountry
@@ -149,6 +151,7 @@ declare global {
   const usePreviewMode: typeof import('../../node_modules/nuxt/dist/app/composables/preview').usePreviewMode
   const useProduct: typeof import('../../app/composables/useProduct').useProduct
   const useProfile: typeof import('../../app/composables/useProfile').useProfile
+  const usePublicProducts: typeof import('../../app/composables/usePublicProducts').usePublicProducts
   const useRbac: typeof import('../../app/composables/useRbac').useRbac
   const useRequestEvent: typeof import('../../node_modules/nuxt/dist/app/composables/ssr').useRequestEvent
   const useRequestFetch: typeof import('../../node_modules/nuxt/dist/app/composables/ssr').useRequestFetch
@@ -208,6 +211,7 @@ declare global {
   const useUser: typeof import('../../app/composables/useUser').useUser
   const useVendor: typeof import('../../app/composables/useVendor').useVendor
   const useVendorOrder: typeof import('../../app/composables/useVendorOrder').useVendorOrder
+  const useVendorQuestions: typeof import('../../app/composables/useVendorQuestions').useVendorQuestions
   const watch: typeof import('vue').watch
   const watchEffect: typeof import('vue').watchEffect
   const watchPostEffect: typeof import('vue').watchPostEffect
@@ -231,8 +235,14 @@ declare global {
   export type { AuditLogUser, AuditLogItem, AuditLogPagination, AuditLogListResponse, AuditLogShowResponse, AuditLogQueryParams } from '../../app/composables/useAuditLog'
   import('../../app/composables/useAuditLog')
   // @ts-ignore
+  export type { CartItemProduct, CartItemVariant, CartItem, UserCart, CartResponse, CartApiError } from '../../app/composables/useCart'
+  import('../../app/composables/useCart')
+  // @ts-ignore
   export type { CategoryItem, CategoryFilters, CategoryPayload, CategoryListResponse, CategoryTreeResponse, CategoryResourceResponse, CategoryChildrenResponse, CategoryDeleteResponse } from '../../app/composables/useCategory'
   import('../../app/composables/useCategory')
+  // @ts-ignore
+  export type { CheckoutShipping, CheckoutSummary, CheckoutPayload, CreateOrderPayload, CreatedOrder, CheckoutApiError } from '../../app/composables/useCheckout'
+  import('../../app/composables/useCheckout')
   // @ts-ignore
   export type { CountryItem, CountryPagination, CountryStats, CountryFilters, CountryPayload, CountryListResponse } from '../../app/composables/useCountry'
   import('../../app/composables/useCountry')
@@ -267,6 +277,9 @@ declare global {
   export type { ProfileUser, ProfileResponse, UpdateProfilePayload, UpdatePasswordPayload } from '../../app/composables/useProfile'
   import('../../app/composables/useProfile')
   // @ts-ignore
+  export type { PublicProductStore, PublicProductCategory, PublicProductImage, PublicProductOptionValue, PublicProductOption, PublicProductVariant, PublicProduct, PublicProductPagination, PublicProductReview, PublicProductQuestion, PublicProductFilters } from '../../app/composables/usePublicProducts'
+  import('../../app/composables/usePublicProducts')
+  // @ts-ignore
   export type { RbacStats, RbacRoleOverview, PermissionModuleOverview, RbacDashboardResponse } from '../../app/composables/useRbac'
   import('../../app/composables/useRbac')
   // @ts-ignore
@@ -284,6 +297,9 @@ declare global {
   // @ts-ignore
   export type { VendorOrderStatus, VendorOrderItem, VendorOrderShipping, VendorOrder, VendorOrderPagination, VendorOrderListResponse, VendorOrderResponse } from '../../app/composables/useVendorOrder'
   import('../../app/composables/useVendorOrder')
+  // @ts-ignore
+  export type { VendorProductQuestion, VendorQuestionPagination, VendorQuestionListResponse, AnswerProductQuestionResponse, VendorQuestionApiError } from '../../app/composables/useVendorQuestions'
+  import('../../app/composables/useVendorQuestions')
   // @ts-ignore
   export type { CacheEntry } from '../../app/utils/cache'
   import('../../app/utils/cache')
@@ -409,8 +425,10 @@ declare module 'vue' {
     readonly useAuth: UnwrapRef<typeof import('../../app/composables/useAuth')['useAuth']>
     readonly useAuthStore: UnwrapRef<typeof import('../../app/stores/auth')['useAuthStore']>
     readonly useCachedRequest: UnwrapRef<typeof import('../../app/composables/useCachedRequest')['useCachedRequest']>
+    readonly useCart: UnwrapRef<typeof import('../../app/composables/useCart')['useCart']>
     readonly useCartStore: UnwrapRef<typeof import('../../app/stores/cart')['useCartStore']>
     readonly useCategory: UnwrapRef<typeof import('../../app/composables/useCategory')['useCategory']>
+    readonly useCheckout: UnwrapRef<typeof import('../../app/composables/useCheckout')['useCheckout']>
     readonly useCookie: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/cookie')['useCookie']>
     readonly useCooldown: UnwrapRef<typeof import('../../app/composables/useCooldown')['useCooldown']>
     readonly useCountry: UnwrapRef<typeof import('../../app/composables/useCountry')['useCountry']>
@@ -446,6 +464,7 @@ declare module 'vue' {
     readonly usePreviewMode: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/preview')['usePreviewMode']>
     readonly useProduct: UnwrapRef<typeof import('../../app/composables/useProduct')['useProduct']>
     readonly useProfile: UnwrapRef<typeof import('../../app/composables/useProfile')['useProfile']>
+    readonly usePublicProducts: UnwrapRef<typeof import('../../app/composables/usePublicProducts')['usePublicProducts']>
     readonly useRbac: UnwrapRef<typeof import('../../app/composables/useRbac')['useRbac']>
     readonly useRequestEvent: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/ssr')['useRequestEvent']>
     readonly useRequestFetch: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/ssr')['useRequestFetch']>
@@ -505,6 +524,7 @@ declare module 'vue' {
     readonly useUser: UnwrapRef<typeof import('../../app/composables/useUser')['useUser']>
     readonly useVendor: UnwrapRef<typeof import('../../app/composables/useVendor')['useVendor']>
     readonly useVendorOrder: UnwrapRef<typeof import('../../app/composables/useVendorOrder')['useVendorOrder']>
+    readonly useVendorQuestions: UnwrapRef<typeof import('../../app/composables/useVendorQuestions')['useVendorQuestions']>
     readonly watch: UnwrapRef<typeof import('vue')['watch']>
     readonly watchEffect: UnwrapRef<typeof import('vue')['watchEffect']>
     readonly watchPostEffect: UnwrapRef<typeof import('vue')['watchPostEffect']>

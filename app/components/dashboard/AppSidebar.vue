@@ -70,6 +70,20 @@ const visibleNavigation = computed<MenuItem[]>(() => {
     });
   }
 
+  if (isVendor && !navigation.some((item) => item.route === "/vendor/questions")) {
+    navigation.push({
+      id: -4,
+      name: "message-circle",
+      label: "Product Q&A",
+      icon: "MessageCircle",
+      route: "/vendor/questions",
+      group: "Account",
+      sort_order: 997,
+      is_active: true,
+      is_system: true,
+    });
+  }
+
   return navigation;
 });
 

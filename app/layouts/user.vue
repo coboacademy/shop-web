@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Bell, Home, LogOut, Menu, Package, Settings, User, X } from "lucide-vue-next";
+import { Bell, Home, LogOut, Menu, Package, Settings, ShoppingCart, User, X } from "lucide-vue-next";
 
 const authStore = useAuthStore();
 const route = useRoute();
@@ -18,6 +18,11 @@ const navigation = [
     label: "Orders",
     to: "/app/orders",
     icon: Package,
+  },
+  {
+    label: "Cart",
+    to: "/app/cart",
+    icon: ShoppingCart,
   },
   {
     label: "Profile",
