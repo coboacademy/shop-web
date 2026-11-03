@@ -1,5 +1,18 @@
 <script setup lang="ts">
-import { ChevronRight, Plus, Settings2, Sparkles, Trash2 } from "lucide-vue-next";
+import {
+  Boxes,
+  ChevronRight,
+  Eye,
+  EyeOff,
+  PackageCheck,
+  Plus,
+  RefreshCw,
+  Search,
+  Settings2,
+  Sparkles,
+  Trash2,
+  X,
+} from "lucide-vue-next";
 import type {
   Product,
   ProductOption,
@@ -42,6 +55,8 @@ const options = ref<ProductOption[]>([]);
 const loading = ref(true);
 const saving = ref(false);
 const errorMessage = ref("");
+const variantSearch = ref("");
+const variantStatusFilter = ref<"all" | "active" | "inactive">("all");
 const variantModalOpen = ref(false);
 const editingVariant = ref<ProductVariant | null>(null);
 const variantToDelete = ref<ProductVariant | null>(null);
@@ -81,6 +96,38 @@ const createVariantPayload = (
 const canConfigureVariants = computed(
   () => options.value.length > 0 && options.value.every((option) => option.values?.length),
 );
+const filteredVariants = computed(() => {
+  const query = variantSearch.value.trim().toLocaleLowerCase();
+  return variants.value.filter((variant) => {
+    const matchesSearch =
+      !query ||
+      variant.sku.toLocaleLowerCase().includes(query) ||
+      variant.option_values.some((value) =>
+        value.value.toLocaleLowerCase().includes(query),
+      );
+    const matchesStatus =
+      variantStatusFilter.value === "all" ||
+      (variantStatusFilter.value === "active" && variant.is_active) ||
+      (variantStatusFilter.value === "inactive" && !variant.is_active);
+    return matchesSearch && matchesStatus;
+  });
+});
+const activeVariantCount = computed(
+  () => variants.value.filter((variant) => variant.is_active).length,
+);
+const inactiveVariantCount = computed(
+  () => variants.value.filter((variant) => !variant.is_active).length,
+);
+const inventoryManagedCount = computed(
+  () => variants.value.filter((variant) => variant.inventory !== null).length,
+);
+const hasVariantFilters = computed(
+  () => Boolean(variantSearch.value.trim()) || variantStatusFilter.value !== "all",
+);
+const clearVariantFilters = () => {
+  variantSearch.value = "";
+  variantStatusFilter.value = "all";
+};
 const combinationLimit = 200;
 const combinationCount = computed(() => {
   if (!canConfigureVariants.value) return 0;
@@ -560,23 +607,35 @@ onMounted(load);
       <span class="font-semibold text-card-foreground">Variants</span>
     </nav>
 
-    <div class="flex flex-wrap items-end justify-between gap-4">
-      <div>
-        <h1 class="text-3xl font-bold tracking-tight text-card-foreground">
-          {{ product?.name || "Product variants" }}
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div class="min-w-0">
+        <p class="text-sm font-medium text-muted-foreground">Product variants</p>
+        <h1 class="mt-1 truncate text-3xl font-bold tracking-tight text-card-foreground">
+          {{ product?.name || "Manage variants" }}
         </h1>
-        <p class="mt-1 text-sm text-muted-foreground">
-          Manage options, SKUs, prices, and availability · {{ variants.length }} variants
-        </p>
+        <div class="mt-2 flex flex-wrap items-center gap-2">
+          <AppBadge v-if="product?.sku" variant="default" class="font-mono">
+            {{ product.sku }}
+          </AppBadge>
+          <span class="text-sm text-muted-foreground">
+            Manage product options, variant pricing, and availability.
+          </span>
+        </div>
       </div>
-      <AppButton
-        :disabled="loading || !product || !canConfigureVariants"
-        :title="canConfigureVariants ? undefined : 'Add options and values before creating variants.'"
-        @click="openCreateVariant"
-      >
-        <Plus class="h-4 w-4" />
-        Add variant
-      </AppButton>
+      <div class="flex flex-col gap-2 sm:flex-row">
+        <AppButton variant="secondary" :disabled="loading || saving" @click="load">
+          <RefreshCw class="h-4 w-4" />
+          Refresh
+        </AppButton>
+        <AppButton
+          :disabled="loading || saving || !product || !canConfigureVariants"
+          :title="canConfigureVariants ? undefined : 'Add options and values before creating variants.'"
+          @click="openCreateVariant"
+        >
+          <Plus class="h-4 w-4" />
+          Add variant
+        </AppButton>
+      </div>
     </div>
 
     <div v-if="loading" class="rounded-2xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
@@ -584,36 +643,139 @@ onMounted(load);
     </div>
     <AlertMessage v-else-if="errorMessage" type="error" title="Unable to load variants" :message="errorMessage" />
     <template v-else>
+      <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatsCard
+          title="Total variants"
+          :value="variants.length"
+          subtitle="For this product"
+          tone="info"
+        >
+          <template #badge>
+            <AppBadge variant="info" shape="square" size="md"><Boxes class="h-5 w-5" /></AppBadge>
+          </template>
+        </StatsCard>
+        <StatsCard
+          title="Active"
+          :value="activeVariantCount"
+          subtitle="Available variants"
+          tone="success"
+        >
+          <template #badge>
+            <AppBadge variant="success" shape="square" size="md"><Eye class="h-5 w-5" /></AppBadge>
+          </template>
+        </StatsCard>
+        <StatsCard
+          title="Inactive"
+          :value="inactiveVariantCount"
+          subtitle="Hidden variants"
+          tone="default"
+        >
+          <template #badge>
+            <AppBadge variant="default" shape="square" size="md"><EyeOff class="h-5 w-5" /></AppBadge>
+          </template>
+        </StatsCard>
+        <StatsCard
+          title="Inventory records"
+          :value="inventoryManagedCount"
+          subtitle="Stock is managed separately"
+          tone="warning"
+        >
+          <template #badge>
+            <AppBadge variant="warning" shape="square" size="md"><PackageCheck class="h-5 w-5" /></AppBadge>
+          </template>
+        </StatsCard>
+      </div>
+
+      <FilterBar
+        title="Find variants"
+        subtitle="Search is local to the variants loaded for this product."
+        columns="2"
+      >
+        <AppInput
+          v-model="variantSearch"
+          label="Search variants"
+          placeholder="Search SKU or option value"
+        >
+          <template #icon><Search class="h-4 w-4" /></template>
+        </AppInput>
+        <AppSelect
+          v-model="variantStatusFilter"
+          label="Status"
+          :options="[
+            { label: 'All statuses', value: 'all' },
+            { label: 'Active', value: 'active' },
+            { label: 'Inactive', value: 'inactive' },
+          ]"
+        />
+        <template #actions>
+          <div class="flex flex-wrap items-center gap-3">
+            <span class="text-sm text-muted-foreground" aria-live="polite">
+              Showing {{ filteredVariants.length }} of {{ variants.length }}
+            </span>
+            <AppButton
+              v-if="hasVariantFilters"
+              size="sm"
+              variant="secondary"
+              @click="clearVariantFilters"
+            >
+              <X class="h-4 w-4" />
+              Clear
+            </AppButton>
+          </div>
+        </template>
+      </FilterBar>
+
       <section class="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5">
           <div>
             <h2 class="font-semibold text-card-foreground">Variant list</h2>
             <p class="mt-1 text-xs text-muted-foreground">
-              {{ variants.length }} variants · Inventory is managed separately
+              Variant combinations and their current prices
             </p>
           </div>
+          <span class="text-xs text-muted-foreground">
+            Manage stock from the Inventory section.
+          </span>
         </div>
-        <div v-if="variants.length" class="overflow-x-auto">
+        <div v-if="filteredVariants.length" class="overflow-x-auto">
           <table class="w-full min-w-[720px] text-left text-sm">
-            <thead class="bg-muted/60 text-xs uppercase tracking-wide text-muted-foreground">
+            <thead class="bg-muted/50 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               <tr>
-                <th class="px-5 py-3">Options</th>
-                <th class="px-5 py-3">SKU</th>
-                <th class="px-5 py-3">Price</th>
-                <th class="px-5 py-3">Inventory status</th>
-                <th class="px-5 py-3">Status</th>
-                <th class="px-5 py-3 text-right">Actions</th>
+                <th class="px-5 py-3.5">Variant</th>
+                <th class="px-5 py-3.5">SKU</th>
+                <th class="px-5 py-3.5">Price</th>
+                <th class="px-5 py-3.5">Inventory</th>
+                <th class="px-5 py-3.5">Status</th>
+                <th class="px-5 py-3.5 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody>
-              <tr v-for="variant in variants" :key="variant.id" class="border-t border-border">
+            <tbody class="divide-y divide-border">
+              <tr
+                v-for="variant in filteredVariants"
+                :key="variant.id"
+                class="transition-colors hover:bg-muted/30"
+              >
                 <td class="px-5 py-4">
-                  <span v-if="variant.option_values.length">
-                    {{ variant.option_values.map((value) => value.value).join(" / ") }}
-                  </span>
-                  <span v-else class="text-muted-foreground">No option values</span>
+                  <div class="flex flex-wrap gap-1.5">
+                    <AppBadge
+                      v-for="value in variant.option_values"
+                      :key="value.id"
+                      variant="default"
+                    >
+                      <span
+                        v-if="value.color_code"
+                        class="mr-1.5 inline-block h-3 w-3 rounded-full border border-border"
+                        :style="{ backgroundColor: value.color_code }"
+                        aria-hidden="true"
+                      />
+                      {{ value.value }}
+                    </AppBadge>
+                    <span v-if="!variant.option_values.length" class="text-muted-foreground">
+                      No option values
+                    </span>
+                  </div>
                 </td>
-                <td class="px-5 py-4 font-mono text-xs">{{ variant.sku }}</td>
+                <td class="px-5 py-4 font-mono text-xs text-card-foreground">{{ variant.sku }}</td>
                 <td class="px-5 py-4 font-medium">
                   {{ variant.price }}
                   <span
@@ -623,8 +785,10 @@ onMounted(load);
                     {{ variant.compare_at_price }}
                   </span>
                 </td>
-                <td class="px-5 py-4 text-muted-foreground">
-                  {{ variant.inventory ? "Managed in inventory" : "Not configured" }}
+                <td class="px-5 py-4">
+                  <AppBadge :variant="variant.inventory ? 'info' : 'default'">
+                    {{ variant.inventory ? "Tracked" : "Not configured" }}
+                  </AppBadge>
                 </td>
                 <td class="px-5 py-4">
                   <AppBadge :variant="variant.is_active ? 'success' : 'default'">
@@ -645,9 +809,21 @@ onMounted(load);
             </tbody>
           </table>
         </div>
+        <div v-else-if="hasVariantFilters" class="space-y-2 p-8 text-center">
+          <p class="font-medium text-card-foreground">No variants match these filters</p>
+          <p class="text-sm text-muted-foreground">Clear the filters or try a different SKU or option value.</p>
+          <AppButton size="sm" variant="secondary" @click="clearVariantFilters">
+            <X class="h-4 w-4" />
+            Clear filters
+          </AppButton>
+        </div>
         <div v-else class="space-y-3 p-8 text-center">
+          <AppBadge variant="info" shape="square" size="lg" class="mx-auto">
+            <Boxes class="h-6 w-6" />
+          </AppBadge>
+          <h3 class="font-semibold text-card-foreground">No variants yet</h3>
           <p class="text-sm text-muted-foreground">
-            No variants yet. Add product options and values, then create variants manually or generate every combination.
+            Add product options and values, then create variants or generate their combinations.
           </p>
           <AppButton size="sm" variant="secondary" @click="openCreateOption">
             <Plus class="h-4 w-4" />

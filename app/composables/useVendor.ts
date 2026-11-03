@@ -3,19 +3,54 @@ export interface VendorProfile {
   user_id?: number | string
   business_name: string
   slug?: string
-  email?: string
-  phone?: string
-  description?: string
-  website?: string
-  country?: string
-  province?: string
-  city?: string
-  address?: string
+  email?: string | null
+  phone?: string | null
+  description?: string | null
+  website?: string | null
+  country?: string | null
+  province?: string | null
+  city?: string | null
+  address?: string | null
   logo?: string | null
   cover_image?: string | null
   status?: string
   verified_at?: string | null
   created_at?: string
+}
+
+export interface AdminVendorUser {
+  id: number
+  name: string
+  email: string
+}
+
+export type AdminVendorStatus = "pending" | "approved" | "rejected" | "suspended"
+
+export interface AdminVendorStore {
+  id: string
+  name: string
+  slug: string
+  is_active: boolean
+}
+
+export interface AdminVendor {
+  id: string
+  business_name: string
+  slug?: string | null
+  email?: string | null
+  phone?: string | null
+  description?: string | null
+  website?: string | null
+  country?: string | null
+  province?: string | null
+  city?: string | null
+  address?: string | null
+  status: AdminVendorStatus
+  user?: AdminVendorUser | null
+  stores_count?: number
+  stores?: AdminVendorStore[]
+  created_at?: string
+  updated_at?: string
 }
 
 export interface VendorProfileResponse {
@@ -37,17 +72,17 @@ export interface AdminVendorListResponse {
   status: string
   message: string
   data: {
-    vendors: VendorProfile[]
+    vendors: AdminVendor[]
     pagination: VendorPagination
   }
 }
 
 export interface AdminVendorFilters {
   search?: string
-  status?: string
+  status?: AdminVendorStatus
   country?: string
   city?: string
-  sort_by?: string
+  sort_by?: "business_name" | "status" | "created_at" | "updated_at"
   sort_direction?: 'asc' | 'desc'
   page?: number
   per_page?: number
@@ -62,49 +97,28 @@ export interface AdminVendorStatistics {
 }
 
 export interface AdminVendorStatisticsResponse {
-  status?: string
-  message?: string
-  data?: {
-    statistics?: AdminVendorStatistics
+  status: string
+  message: string
+  data: {
+    statistics: AdminVendorStatistics
   }
-  statistics?: AdminVendorStatistics
-}
-
-export interface AdminVendorAccount {
-  id?: number | string
-  name?: string
-  email?: string
-  phone?: string
-  status?: string
 }
 
 export interface AdminVendorDetails {
-  vendor: VendorProfile & {
-    updated_at?: string
-    store_count?: number
-    stores_count?: number
-    stores?: Store[]
-  }
-  account?: AdminVendorAccount | null
-  store_count?: number
-  stores?: Store[]
+  vendor: AdminVendor
 }
 
 export interface AdminVendorDetailsResponse {
-  status?: string
-  message?: string
-  data?: AdminVendorDetails
-  vendor?: AdminVendorDetails["vendor"]
-  account?: AdminVendorAccount | null
-  store_count?: number
-  stores?: Store[]
+  status: string
+  message: string
+  data: AdminVendorDetails
 }
 
 export interface AdminVendorActionResponse {
-  status?: string
-  message?: string
-  data?: {
-    vendor?: VendorProfile
+  status: string
+  message: string
+  data: {
+    vendor: AdminVendor
   }
 }
 
@@ -160,10 +174,17 @@ export interface StoreListResponse {
   }
 }
 
-export type VendorKycPayload = Omit<
-  VendorProfile,
-  'id' | 'user_id' | 'slug' | 'email' | 'logo' | 'cover_image' | 'status' | 'verified_at' | 'created_at'
->
+export interface VendorProfileUpdatePayload {
+  business_name: string
+  email: string
+  phone: string | null
+  description: string | null
+  website: string | null
+  country: string | null
+  province: string | null
+  city: string | null
+  address: string | null
+}
 
 export const useVendor = () => {
   const api = useApi()
@@ -191,8 +212,7 @@ export const useVendor = () => {
       const response = await api.get<AdminVendorStatisticsResponse>(
         '/admin/vendors/statistics'
       )
-      const statistics = response.data.data?.statistics || response.data.statistics
-
+      const statistics = response.data.data?.statistics
       if (!statistics) {
         throw new Error('Vendor statistics were missing from the response')
       }
@@ -212,18 +232,15 @@ export const useVendor = () => {
 
   const getAdminVendor = async (id: string): Promise<AdminVendorDetails> => {
     try {
-      const response = await api.get<AdminVendorDetailsResponse>(`/admin/vendors/${id}`)
-      const payload = response.data.data || response.data
-
-      if ("vendor" in payload && payload.vendor) {
-        return payload as AdminVendorDetails
+      const response = await api.get<AdminVendorDetailsResponse>(
+        `/admin/vendors/${encodeURIComponent(id)}`
+      )
+      const details = response.data.data
+      if (!details?.vendor) {
+        throw new Error('Vendor details were missing from the response')
       }
 
-      if ("id" in payload) {
-        return { vendor: payload as AdminVendorDetails["vendor"] }
-      }
-
-      throw new Error("Vendor details were missing from the response")
+      return details
     } catch (error: any) {
       throw {
         message: error.response?.data?.message || error.message || "Failed to fetch vendor details",
@@ -236,7 +253,7 @@ export const useVendor = () => {
   const approveAdminVendor = async (id: string): Promise<AdminVendorActionResponse> => {
     try {
       const response = await api.patch<AdminVendorActionResponse>(
-        `/admin/vendors/${id}/approve`
+        `/admin/vendors/${encodeURIComponent(id)}/approve`
       )
       return response.data
     } catch (error: any) {
@@ -254,7 +271,7 @@ export const useVendor = () => {
   ): Promise<AdminVendorActionResponse> => {
     try {
       const response = await api.patch<AdminVendorActionResponse>(
-        `/admin/vendors/${id}/reject`,
+        `/admin/vendors/${encodeURIComponent(id)}/reject`,
         { reason }
       )
       return response.data
@@ -273,7 +290,7 @@ export const useVendor = () => {
   ): Promise<AdminVendorActionResponse> => {
     try {
       const response = await api.patch<AdminVendorActionResponse>(
-        `/admin/vendors/${id}/suspend`,
+        `/admin/vendors/${encodeURIComponent(id)}/suspend`,
         { reason }
       )
       return response.data
@@ -291,7 +308,7 @@ export const useVendor = () => {
   ): Promise<AdminVendorActionResponse> => {
     try {
       const response = await api.patch<AdminVendorActionResponse>(
-        `/admin/vendors/${id}/reactivate`
+        `/admin/vendors/${encodeURIComponent(id)}/reactivate`
       )
       return response.data
     } catch (error: any) {
@@ -316,13 +333,15 @@ export const useVendor = () => {
     }
   }
 
-  const updateKyc = async (payload: VendorKycPayload): Promise<VendorProfileResponse> => {
+  const updateProfile = async (
+    payload: VendorProfileUpdatePayload
+  ): Promise<VendorProfileResponse> => {
     try {
-      const response = await api.put<VendorProfileResponse>('/vendor/kyc', payload)
+      const response = await api.put<VendorProfileResponse>('/vendor/profile', payload)
       return response.data
     } catch (error: any) {
       throw {
-        message: error.response?.data?.message || 'Failed to update vendor KYC',
+        message: error.response?.data?.message || 'Failed to update vendor profile',
         errors: error.response?.data?.errors || {},
         status: error.response?.status || 500,
       }
@@ -490,7 +509,7 @@ export const useVendor = () => {
     suspendAdminVendor,
     reactivateAdminVendor,
     getProfile,
-    updateKyc,
+    updateProfile,
     createStore,
     getStore,
     getStores,

@@ -26,6 +26,8 @@ export interface ProductCategory {
   description?: string | null;
   image?: string | null;
   image_url?: string | null;
+  icon?: string | null;
+  icon_url?: string | null;
   is_active?: boolean;
   children?: ProductCategory[];
 }
@@ -451,6 +453,77 @@ export const useProduct = () => {
   const adjustProductStock = (productId: string, payload: ProductStockChangePayload) =>
     postProductStockChange(productId, "adjust-stock", payload);
 
+  const postVariantStockChange = async (
+    productId: string,
+    variantId: string,
+    action: "add-stock" | "remove-stock" | "adjust-stock",
+    payload: ProductStockChangePayload,
+  ): Promise<ProductInventoryResponse> => {
+    try {
+      const response = await api.post<ProductInventoryResponse>(
+        `/vendor/products/${encodeURIComponent(productId)}/variants/${encodeURIComponent(variantId)}/inventory/${action}`,
+        payload,
+      );
+      return response.data;
+    } catch (error: any) {
+      throw {
+        message: error.response?.data?.message || `Failed to ${action.replace("-", " ")} for variant inventory`,
+        errors: error.response?.data?.errors || {},
+        status: error.response?.status || 500,
+      };
+    }
+  };
+
+  const addVariantStock = (
+    productId: string,
+    variantId: string,
+    payload: ProductStockChangePayload,
+  ) => postVariantStockChange(productId, variantId, "add-stock", payload);
+
+  const removeVariantStock = (
+    productId: string,
+    variantId: string,
+    payload: ProductStockChangePayload,
+  ) => postVariantStockChange(productId, variantId, "remove-stock", payload);
+
+  const adjustVariantStock = async (
+    productId: string,
+    variantId: string,
+    payload: ProductStockChangePayload,
+  ): Promise<ProductInventoryResponse> => {
+    try {
+      const response = await api.patch<ProductInventoryResponse>(
+        `/vendor/products/${encodeURIComponent(productId)}/variants/${encodeURIComponent(variantId)}/inventory/adjust-stock`,
+        payload,
+      );
+      return response.data;
+    } catch (error: any) {
+      throw {
+        message: error.response?.data?.message || "Failed to adjust variant inventory",
+        errors: error.response?.data?.errors || {},
+        status: error.response?.status || 500,
+      };
+    }
+  };
+
+  const getVariantInventory = async (
+    productId: string,
+    variantId: string,
+  ): Promise<ProductInventoryResponse> => {
+    try {
+      const response = await api.get<ProductInventoryResponse>(
+        `/vendor/products/${encodeURIComponent(productId)}/variants/${encodeURIComponent(variantId)}/inventory`,
+      );
+      return response.data;
+    } catch (error: any) {
+      throw {
+        message: error.response?.data?.message || "Failed to fetch variant inventory",
+        errors: error.response?.data?.errors || {},
+        status: error.response?.status || 500,
+      };
+    }
+  };
+
   const getProductInventoryMovements = async (
     productId: string,
   ): Promise<ProductInventoryMovementsResponse> => {
@@ -462,6 +535,24 @@ export const useProduct = () => {
     } catch (error: any) {
       throw {
         message: error.response?.data?.message || "Failed to fetch inventory movements",
+        errors: error.response?.data?.errors || {},
+        status: error.response?.status || 500,
+      };
+    }
+  };
+
+  const getVariantInventoryMovements = async (
+    productId: string,
+    variantId: string,
+  ): Promise<ProductInventoryMovementsResponse> => {
+    try {
+      const response = await api.get<ProductInventoryMovementsResponse>(
+        `/vendor/products/${encodeURIComponent(productId)}/variants/${encodeURIComponent(variantId)}/inventory/movements`,
+      );
+      return response.data;
+    } catch (error: any) {
+      throw {
+        message: error.response?.data?.message || "Failed to fetch variant inventory movements",
         errors: error.response?.data?.errors || {},
         status: error.response?.status || 500,
       };
@@ -903,7 +994,12 @@ export const useProduct = () => {
     addProductStock,
     removeProductStock,
     adjustProductStock,
+    addVariantStock,
+    removeVariantStock,
+    adjustVariantStock,
+    getVariantInventory,
     getProductInventoryMovements,
+    getVariantInventoryMovements,
     getVendorInventories,
     getVendorLowStockInventories,
     getVendorOutOfStockInventories,

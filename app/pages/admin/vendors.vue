@@ -1,28 +1,34 @@
 <script setup lang="ts">
 import type {
+  AdminVendor,
   AdminVendorDetails,
-  VendorProfile,
+  AdminVendorStatistics,
+  AdminVendorStatus,
+  AdminVendorStore,
   VendorPagination,
 } from "~/composables/useVendor";
 import {
   CheckCircle2,
+  Clock3,
   Eye,
   RefreshCcw,
   RotateCcw,
   ShieldAlert,
   Store,
+  Users,
   XCircle,
 } from "lucide-vue-next";
 
 definePageMeta({
   layout: "dashboard",
   middleware: ["auth", "permission"],
-  permission: "vendor.view",
+  permission: "vendors.view",
   title: "Vendor Management",
 });
 
 const {
   getAdminVendors,
+  getAdminVendorStatistics,
   getAdminVendor,
   approveAdminVendor,
   rejectAdminVendor,
@@ -32,11 +38,11 @@ const {
 const toast = useToast();
 const authStore = useAuthStore();
 
-const vendors = ref<VendorProfile[]>([]);
+const vendors = ref<AdminVendor[]>([]);
 const pagination = ref<VendorPagination>({
   current_page: 1,
   last_page: 1,
-  per_page: 10,
+  per_page: 15,
   total: 0,
 });
 
@@ -49,7 +55,10 @@ const sortDirection = ref("desc");
 const page = ref(1);
 const loading = ref(false);
 const errorMessage = ref("");
-const selectedVendor = ref<VendorProfile | null>(null);
+const statistics = ref<AdminVendorStatistics | null>(null);
+const statisticsLoading = ref(false);
+const statisticsError = ref("");
+const selectedVendor = ref<AdminVendor | null>(null);
 const vendorDetails = ref<AdminVendorDetails | null>(null);
 const detailsOpen = ref(false);
 const detailsLoading = ref(false);
@@ -83,20 +92,23 @@ const approvalConfirmation = computed(() => {
   };
 });
 
-const detailStores = computed(
-  () => vendorDetails.value?.stores || vendorDetails.value?.vendor.stores || []
+const detailStores = computed<AdminVendorStore[]>(
+  () => vendorDetails.value?.vendor.stores || []
 );
 const detailStoreCount = computed(
-  () =>
-    vendorDetails.value?.store_count ??
-    vendorDetails.value?.vendor.store_count ??
-    vendorDetails.value?.vendor.stores_count ??
-    detailStores.value.length
+  () => vendorDetails.value?.vendor.stores_count ?? detailStores.value.length
 );
+const isVendorStatus = (value: string): value is AdminVendorStatus =>
+  ["pending", "approved", "rejected", "suspended"].includes(value);
+const isVendorSortField = (
+  value: string
+): value is "business_name" | "status" | "created_at" | "updated_at" =>
+  ["business_name", "status", "created_at", "updated_at"].includes(value);
 
 const columns = [
   { key: "vendor", label: "Vendor" },
   { key: "location", label: "Location" },
+  { key: "stores_count", label: "Stores" },
   { key: "status", label: "Status" },
   { key: "created_at", label: "Joined" },
   { key: "actions", label: "Actions", align: "right" as const },
@@ -109,28 +121,64 @@ const fetchVendors = async () => {
   try {
     const response = await getAdminVendors({
       search: search.value.trim() || undefined,
-      status: status.value || undefined,
+      status: isVendorStatus(status.value) ? status.value : undefined,
       country: country.value.trim() || undefined,
       city: city.value.trim() || undefined,
-      sort_by: sortBy.value,
-      sort_direction: sortDirection.value as "asc" | "desc",
+      sort_by: isVendorSortField(sortBy.value) ? sortBy.value : "created_at",
+      sort_direction: sortDirection.value === "asc" ? "asc" : "desc",
       page: page.value,
       per_page: pagination.value.per_page,
     });
 
-    vendors.value = Array.isArray(response.data?.vendors) ? response.data.vendors : [];
-    pagination.value = {
-      ...pagination.value,
-      ...(response.data?.pagination || {}),
-    };
+    vendors.value = response.data.vendors;
+    pagination.value = response.data.pagination;
     page.value = pagination.value.current_page;
-  } catch (error: any) {
-    errorMessage.value =
-      error.response?.data?.message || error.message || "Failed to load vendors";
+  } catch (error: unknown) {
+    errorMessage.value = getVendorErrorDetails(error, "Failed to load vendors").message;
     toast.error("Failed to load vendors", errorMessage.value);
   } finally {
     loading.value = false;
   }
+};
+
+const fetchVendorStatistics = async () => {
+  statisticsLoading.value = true;
+  statisticsError.value = "";
+  statistics.value = null;
+  try {
+    statistics.value = await getAdminVendorStatistics();
+  } catch (error: unknown) {
+    statisticsError.value = getVendorErrorDetails(
+      error,
+      "Failed to load vendor statistics"
+    ).message;
+  } finally {
+    statisticsLoading.value = false;
+  }
+};
+
+const refreshVendorData = async () => {
+  await Promise.all([fetchVendors(), fetchVendorStatistics()]);
+};
+
+const getVendorErrorDetails = (error: unknown, fallback: string) => {
+  const value =
+    typeof error === "object" && error !== null
+      ? (error as {
+        message?: string;
+        errors?: Record<string, string[]>;
+        response?: {
+          data?: {
+            message?: string;
+            errors?: Record<string, string[]>;
+          };
+        };
+      })
+      : {};
+  return {
+    message: value.response?.data?.message || value.message || fallback,
+    errors: value.response?.data?.errors || value.errors || {},
+  };
 };
 
 const applyFilters = () => {
@@ -154,7 +202,7 @@ const goToPage = (nextPage: number) => {
   void fetchVendors();
 };
 
-const openVendorDetails = async (vendor: VendorProfile) => {
+const openVendorDetails = async (vendor: AdminVendor) => {
   selectedVendor.value = vendor;
   vendorDetails.value = null;
   detailsError.value = "";
@@ -163,15 +211,17 @@ const openVendorDetails = async (vendor: VendorProfile) => {
 
   try {
     vendorDetails.value = await getAdminVendor(vendor.id);
-  } catch (error: any) {
-    detailsError.value =
-      error.response?.data?.message || error.message || "Failed to load vendor details";
+  } catch (error: unknown) {
+    detailsError.value = getVendorErrorDetails(
+      error,
+      "Failed to load vendor details"
+    ).message;
   } finally {
     detailsLoading.value = false;
   }
 };
 
-const openReasonDialog = (vendor: VendorProfile, action: "reject" | "suspend") => {
+const openReasonDialog = (vendor: AdminVendor, action: "reject" | "suspend") => {
   selectedVendor.value = vendor;
   reasonAction.value = action;
   reasonText.value = "";
@@ -210,10 +260,14 @@ const submitReasonAction = async () => {
     toast.success("Vendor status updated", `${selectedVendor.value.business_name} was ${actionLabel}.`);
     reasonOpen.value = false;
     reasonText.value = "";
-    await fetchVendors();
-  } catch (error: any) {
+    await refreshVendorData();
+  } catch (error: unknown) {
+    const details = getVendorErrorDetails(
+      error,
+      `Failed to ${reasonAction.value} vendor`
+    );
     reasonError.value =
-      error.response?.data?.message || error.message || `Failed to ${reasonAction.value} vendor`;
+      details.errors.reason?.[0] || details.errors.vendor?.[0] || details.message;
     toast.error("Vendor action failed", reasonError.value);
   } finally {
     actionLoading.value = false;
@@ -237,18 +291,19 @@ const confirmVendorStatusAction = async () => {
     }
 
     approvalOpen.value = false;
-    await fetchVendors();
-  } catch (error: any) {
+    await refreshVendorData();
+  } catch (error: unknown) {
+    const details = getVendorErrorDetails(error, "Failed to update vendor status");
     toast.error(
-      "Approval failed",
-      error.response?.data?.message || error.message || "Failed to approve vendor"
+      approvalAction.value === "reactivate" ? "Reactivation failed" : "Approval failed",
+      details.errors.vendor?.[0] || details.message
     );
   } finally {
     approvalLoading.value = false;
   }
 };
 
-const handleVendorAction = (vendor: VendorProfile, action: string) => {
+const handleVendorAction = (vendor: AdminVendor, action: string) => {
   if (action === "details") {
     void openVendorDetails(vendor);
   } else if (action === "approve" || action === "reactivate") {
@@ -261,7 +316,7 @@ const handleVendorAction = (vendor: VendorProfile, action: string) => {
 };
 
 onMounted(() => {
-  void fetchVendors();
+  void refreshVendorData();
 });
 </script>
 
@@ -272,7 +327,11 @@ onMounted(() => {
       subtitle="Review marketplace vendors and their current status."
     >
       <template #actions>
-        <AppButton variant="secondary" :disabled="loading" @click="fetchVendors">
+        <AppButton
+          variant="secondary"
+          :disabled="loading || statisticsLoading"
+          @click="refreshVendorData"
+        >
           <RefreshCcw class="mr-2 h-4 w-4" />
           Refresh
         </AppButton>
@@ -284,6 +343,76 @@ onMounted(() => {
       type="error"
       title="Unable to load vendors"
       :message="errorMessage"
+    />
+
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <StatsCard
+        title="Total Vendors"
+        :value="statistics?.total ?? (statisticsLoading ? '…' : '—')"
+        subtitle="All vendor accounts"
+        tone="info"
+      >
+        <template #badge>
+          <AppBadge variant="info" shape="square" size="md">
+            <Users class="h-5 w-5" />
+          </AppBadge>
+        </template>
+      </StatsCard>
+      <StatsCard
+        title="Pending"
+        :value="statistics?.pending ?? (statisticsLoading ? '…' : '—')"
+        subtitle="Awaiting review"
+        tone="warning"
+      >
+        <template #badge>
+          <AppBadge variant="warning" shape="square" size="md">
+            <Clock3 class="h-5 w-5" />
+          </AppBadge>
+        </template>
+      </StatsCard>
+      <StatsCard
+        title="Approved"
+        :value="statistics?.approved ?? (statisticsLoading ? '…' : '—')"
+        subtitle="Approved vendors"
+        tone="success"
+      >
+        <template #badge>
+          <AppBadge variant="success" shape="square" size="md">
+            <CheckCircle2 class="h-5 w-5" />
+          </AppBadge>
+        </template>
+      </StatsCard>
+      <StatsCard
+        title="Rejected"
+        :value="statistics?.rejected ?? (statisticsLoading ? '…' : '—')"
+        subtitle="Rejected applications"
+        tone="danger"
+      >
+        <template #badge>
+          <AppBadge variant="danger" shape="square" size="md">
+            <XCircle class="h-5 w-5" />
+          </AppBadge>
+        </template>
+      </StatsCard>
+      <StatsCard
+        title="Suspended"
+        :value="statistics?.suspended ?? (statisticsLoading ? '…' : '—')"
+        subtitle="Suspended vendors"
+        tone="default"
+      >
+        <template #badge>
+          <AppBadge variant="default" shape="square" size="md">
+            <ShieldAlert class="h-5 w-5" />
+          </AppBadge>
+        </template>
+      </StatsCard>
+    </div>
+
+    <AlertMessage
+      v-if="statisticsError"
+      type="error"
+      title="Unable to load vendor statistics"
+      :message="statisticsError"
     />
 
     <FilterBar title="Vendor directory" subtitle="Search, filter, and sort vendors.">
@@ -309,6 +438,7 @@ onMounted(() => {
         label="Sort by"
         :options="[
           { label: 'Date joined', value: 'created_at' },
+          { label: 'Last updated', value: 'updated_at' },
           { label: 'Business name', value: 'business_name' },
           { label: 'Status', value: 'status' },
         ]"
@@ -318,8 +448,8 @@ onMounted(() => {
         v-model="sortDirection"
         label="Direction"
         :options="[
-          { label: 'Newest first', value: 'desc' },
-          { label: 'Oldest first', value: 'asc' },
+          { label: 'Descending', value: 'desc' },
+          { label: 'Ascending', value: 'asc' },
         ]"
       />
 
@@ -338,24 +468,18 @@ onMounted(() => {
     >
       <template #cell-vendor="{ row }">
         <div class="flex items-center gap-3">
-          <img
-            v-if="row.logo"
-            :src="row.logo"
-            :alt="`${row.business_name} logo`"
-            class="h-10 w-10 rounded-md border border-border object-cover"
-          />
-          <div
-            v-else
-            class="flex h-10 w-10 items-center justify-center rounded-md bg-muted text-muted-foreground"
-          >
+          <div class="flex h-10 w-10 items-center justify-center rounded-md bg-muted text-muted-foreground">
             <Store class="h-5 w-5" />
           </div>
           <div class="min-w-0">
             <p class="truncate text-sm font-semibold text-card-foreground">
               {{ row.business_name || "Unnamed vendor" }}
             </p>
-            <p class="truncate text-sm text-muted-foreground">
-              {{ row.email || row.slug || row.id }}
+            <p class="truncate text-xs text-muted-foreground">
+              {{ row.user?.name || "Account name not provided" }}
+            </p>
+            <p class="truncate text-xs text-muted-foreground">
+              {{ row.email || row.user?.email || row.slug || row.id }}
             </p>
           </div>
         </div>
@@ -365,6 +489,10 @@ onMounted(() => {
         <span class="text-sm text-muted-foreground">
           {{ [row.city, row.country].filter(Boolean).join(", ") || "Not provided" }}
         </span>
+      </template>
+
+      <template #cell-stores_count="{ row }">
+        <span class="text-sm text-muted-foreground">{{ row.stores_count ?? "—" }}</span>
       </template>
 
       <template #cell-status="{ row }">
@@ -471,6 +599,10 @@ onMounted(() => {
             <p class="text-xs font-semibold uppercase text-muted-foreground">Status</p>
             <AppBadge class="mt-2">{{ vendorDetails.vendor.status || "unknown" }}</AppBadge>
           </div>
+          <div v-if="vendorDetails.vendor.slug">
+            <p class="text-xs font-semibold uppercase text-muted-foreground">Slug</p>
+            <p class="mt-2 break-all text-sm text-card-foreground">{{ vendorDetails.vendor.slug }}</p>
+          </div>
           <div>
             <p class="text-xs font-semibold uppercase text-muted-foreground">Store count</p>
             <p class="mt-2 text-sm font-semibold text-card-foreground">{{ detailStoreCount }}</p>
@@ -482,6 +614,32 @@ onMounted(() => {
           <div>
             <p class="text-xs font-semibold uppercase text-muted-foreground">Phone</p>
             <p class="mt-2 text-sm text-card-foreground">{{ vendorDetails.vendor.phone || "Not provided" }}</p>
+          </div>
+          <div v-if="vendorDetails.vendor.website">
+            <p class="text-xs font-semibold uppercase text-muted-foreground">Website</p>
+            <a
+              :href="vendorDetails.vendor.website"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="mt-2 block break-all text-sm text-primary underline"
+            >
+              {{ vendorDetails.vendor.website }}
+            </a>
+          </div>
+          <div>
+            <p class="text-xs font-semibold uppercase text-muted-foreground">Location</p>
+            <p class="mt-2 text-sm text-card-foreground">
+              {{
+                [
+                  vendorDetails.vendor.address,
+                  vendorDetails.vendor.city,
+                  vendorDetails.vendor.province,
+                  vendorDetails.vendor.country,
+                ]
+                  .filter(Boolean)
+                  .join(", ") || "Not provided"
+              }}
+            </p>
           </div>
           <div>
             <p class="text-xs font-semibold uppercase text-muted-foreground">Created</p>
@@ -498,21 +656,20 @@ onMounted(() => {
           <dl class="mt-3 grid gap-3 sm:grid-cols-2">
             <div>
               <dt class="text-xs text-muted-foreground">Name</dt>
-              <dd class="mt-1 text-sm text-card-foreground">{{ vendorDetails.account?.name || "Not provided" }}</dd>
+              <dd class="mt-1 text-sm text-card-foreground">{{ vendorDetails.vendor.user?.name || "Not provided" }}</dd>
             </div>
             <div>
               <dt class="text-xs text-muted-foreground">Email</dt>
-              <dd class="mt-1 break-all text-sm text-card-foreground">{{ vendorDetails.account?.email || "Not provided" }}</dd>
-            </div>
-            <div>
-              <dt class="text-xs text-muted-foreground">Phone</dt>
-              <dd class="mt-1 text-sm text-card-foreground">{{ vendorDetails.account?.phone || "Not provided" }}</dd>
-            </div>
-            <div>
-              <dt class="text-xs text-muted-foreground">Account status</dt>
-              <dd class="mt-1 text-sm text-card-foreground">{{ vendorDetails.account?.status || "Not provided" }}</dd>
+              <dd class="mt-1 break-all text-sm text-card-foreground">{{ vendorDetails.vendor.user?.email || "Not provided" }}</dd>
             </div>
           </dl>
+        </section>
+
+        <section v-if="vendorDetails.vendor.description" class="border-t border-border pt-5">
+          <h3 class="text-sm font-bold text-card-foreground">Description</h3>
+          <p class="mt-3 whitespace-pre-wrap text-sm text-muted-foreground">
+            {{ vendorDetails.vendor.description }}
+          </p>
         </section>
 
         <section class="border-t border-border pt-5">
@@ -521,8 +678,11 @@ onMounted(() => {
             <div v-for="store in detailStores" :key="store.id" class="py-3 first:pt-0 last:pb-0">
               <p class="text-sm font-semibold text-card-foreground">{{ store.name }}</p>
               <p class="mt-1 text-sm text-muted-foreground">
-                {{ [store.city, store.country].filter(Boolean).join(", ") || store.address || "Location not provided" }}
+                {{ store.slug }}
               </p>
+              <AppBadge class="mt-2" :variant="store.is_active ? 'success' : 'default'">
+                {{ store.is_active ? "Active" : "Inactive" }}
+              </AppBadge>
             </div>
           </div>
           <p v-else class="mt-3 text-sm text-muted-foreground">No stores listed.</p>
@@ -545,9 +705,11 @@ onMounted(() => {
           <textarea
             id="vendor-action-reason"
             v-model="reasonText"
+            minlength="5"
             maxlength="1000"
             rows="5"
             required
+            :disabled="actionLoading"
             class="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm text-card-foreground outline-none placeholder:text-muted-foreground focus:border-sky-500 focus:ring-4 focus:ring-sky-100 dark:focus:ring-sky-950"
             :aria-invalid="Boolean(reasonError)"
             placeholder="Enter at least 5 characters"

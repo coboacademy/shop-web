@@ -30,7 +30,7 @@ const toast = useToast();
 const authStore = useAuthStore();
 const { getAdminVendorStatistics } = useVendor();
 
-const canViewVendorStatistics = computed(() => authStore.hasPermission("vendor.view"));
+const canViewVendorStatistics = computed(() => authStore.hasPermission("vendors.view"));
 const vendorStatistics = ref<AdminVendorStatistics | null>(null);
 const vendorStatisticsLoading = ref(false);
 const vendorStatisticsError = ref("");

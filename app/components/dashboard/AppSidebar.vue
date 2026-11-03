@@ -28,8 +28,7 @@ const visibleNavigation = computed<MenuItem[]>(() => {
   const navigation = [...menus];
 
   if (
-    authStore.hasPermission("dashboard.view") &&
-    authStore.hasPermission("vendor.view") &&
+    authStore.hasPermission("vendors.view") &&
     !navigation.some((item) => item.route === "/admin/vendors")
   ) {
     navigation.push({
@@ -52,6 +51,34 @@ const visibleNavigation = computed<MenuItem[]>(() => {
       route: "/vendor/stores",
       group: "Account",
       sort_order: 999,
+      is_active: true,
+      is_system: true,
+    });
+  }
+
+  if (isVendor && !navigation.some((item) => item.route === "/vendor/orders")) {
+    navigation.push({
+      id: -3,
+      name: "shopping-bag",
+      label: "Order Management",
+      icon: "ShoppingBag",
+      route: "/vendor/orders",
+      group: "Account",
+      sort_order: 998,
+      is_active: true,
+      is_system: true,
+    });
+  }
+
+  if (isVendor && !navigation.some((item) => item.route === "/vendor/questions")) {
+    navigation.push({
+      id: -4,
+      name: "message-circle",
+      label: "Product Q&A",
+      icon: "MessageCircle",
+      route: "/vendor/questions",
+      group: "Account",
+      sort_order: 997,
       is_active: true,
       is_system: true,
     });

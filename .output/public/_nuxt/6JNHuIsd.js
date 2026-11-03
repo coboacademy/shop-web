@@ -1,0 +1,1 @@
+import{an as e,L as n,A as i}from"./DauAGhDk.js";const o=e(a=>{const t=n();if(t.initialized||t.initAuth(),!t.isAuthenticated)return a.path.startsWith("/admin")?i("/admin/login"):a.path.startsWith("/vendor")?i("/vendor/login"):i("/login")});export{o as default};
