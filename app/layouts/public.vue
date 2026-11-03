@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowRight, ShoppingBag, ShoppingCart, UserRound } from "lucide-vue-next";
+import { ArrowRight, Heart, ShoppingBag, ShoppingCart, UserRound } from "lucide-vue-next";
 
 const authStore = useAuthStore();
 
@@ -61,6 +61,13 @@ const isCustomer = computed(
           >
             Cart
           </NuxtLink>
+          <NuxtLink
+            v-if="isCustomer"
+            to="/app/wishlist"
+            class="rounded-xl px-3 py-2 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+          >
+            Wishlist
+          </NuxtLink>
         </nav>
 
         <div class="flex shrink-0 items-center gap-2">
@@ -77,6 +84,14 @@ const isCustomer = computed(
             class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           >
             <ShoppingCart class="h-4 w-4" />
+          </NuxtLink>
+          <NuxtLink
+            v-if="isCustomer"
+            to="/app/wishlist"
+            aria-label="View wishlist"
+            class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          >
+            <Heart class="h-4 w-4" />
           </NuxtLink>
           <NuxtLink
             v-if="isCustomer"

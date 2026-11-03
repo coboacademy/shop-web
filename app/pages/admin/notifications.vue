@@ -34,7 +34,6 @@ const readFilter = ref<"all" | "read" | "unread">("all");
 
 const actionLoading = ref(false);
 const clearConfirmOpen = ref(false);
-const pageErrorMessage = ref("");
 
 const notifications = computed(() => {
   return Array.isArray(notificationPageStore.notifications)
@@ -50,9 +49,7 @@ const totalItems = computed(() => notificationPageStore.totalItems);
 
 const loading = computed(() => notificationPageStore.loading);
 const refreshing = computed(() => notificationPageStore.refreshing);
-const errorMessage = computed(
-  () => notificationPageStore.errorMessage || pageErrorMessage.value
-);
+const errorMessage = computed(() => notificationPageStore.errorMessage);
 
 const unreadCount = computed(() => {
   return headerNotificationStore.unreadCount ?? notificationPageStore.unreadCount ?? 0;
@@ -84,14 +81,37 @@ const typeVariant = (type: NotificationType) => {
   return variants[type];
 };
 
+const errorMessageOf = (error: unknown, fallback: string) => {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof error.message === "string"
+  ) {
+    return error.message;
+  }
+  return fallback;
+};
+
+const safeActionUrl = (actionUrl: string | null | undefined) => {
+  if (
+    !actionUrl ||
+    !actionUrl.startsWith("/") ||
+    actionUrl.startsWith("//") ||
+    actionUrl.includes("\\")
+  ) {
+    return null;
+  }
+
+  return actionUrl;
+};
+
 const fetchNotifications = async (
   options: {
     force?: boolean;
     silent?: boolean;
   } = {}
 ) => {
-  pageErrorMessage.value = "";
-
   await notificationPageStore.fetchNotifications(
     {
       page: page.value,
@@ -108,6 +128,15 @@ const fetchNotifications = async (
   }
 };
 
+const refreshCurrentPage = async () => {
+  await fetchNotifications({ force: true, silent: true });
+
+  if (page.value > lastPage.value && lastPage.value > 0) {
+    page.value = lastPage.value;
+    await fetchNotifications({ force: true, silent: true });
+  }
+};
+
 const handleRefresh = async () => {
   await fetchNotifications({
     force: true,
@@ -120,42 +149,42 @@ const handleRefresh = async () => {
 const handleOpenNotification = async (notification: NotificationItem) => {
   try {
     if (!notification.read) {
-      await markNotificationAsRead(notification.id);
-
-      notificationPageStore.markLocalAsRead(notification.id);
+      const response = await markNotificationAsRead(notification.id);
       notificationPageStore.clearCache();
-
+      headerNotificationStore.unreadCount = response.data.unread_count ?? 0;
+      await refreshCurrentPage();
       await headerNotificationStore.refreshNotifications();
     }
 
-    if (notification.action_url) {
-      await navigateTo(notification.action_url);
+    const actionUrl = safeActionUrl(notification.action_url);
+    if (actionUrl) {
+      await navigateTo(actionUrl);
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     toast.error(
-      "Action failed",
-      error.response?.data?.message || error.message || "Failed to open notification"
+      "Could not open notification",
+      errorMessageOf(error, "Please try again.")
     );
   }
 };
 
 const handleMarkAllAsRead = async () => {
+  if (actionLoading.value || unreadCount.value === 0) return;
   actionLoading.value = true;
 
   try {
     const response = await markAllNotificationsAsRead();
 
-    notificationPageStore.markAllLocalAsRead();
     notificationPageStore.clearCache();
-
-    headerNotificationStore.unreadCount = response.data?.unread_count || 0;
+    headerNotificationStore.unreadCount = response.data.unread_count ?? 0;
+    await refreshCurrentPage();
     await headerNotificationStore.refreshNotifications();
 
     toast.success("Notifications updated", "All notifications were marked as read.");
-  } catch (error: any) {
+  } catch (error: unknown) {
     toast.error(
-      "Action failed",
-      error.response?.data?.message || error.message || "Failed to mark all as read"
+      "Could not update notifications",
+      errorMessageOf(error, "Please try again.")
     );
   } finally {
     actionLoading.value = false;
@@ -173,6 +202,7 @@ const closeClearConfirm = () => {
 };
 
 const handleClearAll = async () => {
+  if (actionLoading.value) return;
   actionLoading.value = true;
 
   try {
@@ -183,16 +213,16 @@ const handleClearAll = async () => {
     notificationPageStore.clearLocalNotifications();
     notificationPageStore.clearCache();
 
-    headerNotificationStore.unreadCount = response.data?.unread_count || 0;
+    headerNotificationStore.unreadCount = response.data.unread_count ?? 0;
     await headerNotificationStore.refreshNotifications();
 
     toast.success("Notifications cleared", "All notifications were removed.");
 
-    closeClearConfirm();
-  } catch (error: any) {
+    clearConfirmOpen.value = false;
+  } catch (error: unknown) {
     toast.error(
-      "Action failed",
-      error.response?.data?.message || error.message || "Failed to clear notifications"
+      "Could not clear notifications",
+      errorMessageOf(error, "Please try again.")
     );
   } finally {
     actionLoading.value = false;
@@ -200,20 +230,21 @@ const handleClearAll = async () => {
 };
 
 const goPrevious = async () => {
-  if (page.value <= 1) return;
+  if (loading.value || page.value <= 1) return;
 
   page.value--;
   await fetchNotifications();
 };
 
 const goNext = async () => {
-  if (page.value >= lastPage.value) return;
+  if (loading.value || page.value >= lastPage.value) return;
 
   page.value++;
   await fetchNotifications();
 };
 
 const goToPage = async (targetPage: number) => {
+  if (loading.value) return;
   if (targetPage < 1) return;
   if (targetPage > lastPage.value) return;
 
@@ -237,7 +268,7 @@ onMounted(async () => {
   <div class="space-y-6">
     <PageHeader
       title="Notifications"
-      subtitle="View system updates, admin actions, account events, and security messages."
+      subtitle="Review account updates and administrative activity notifications."
     >
       <template #actions>
         <AppButton variant="secondary" :loading="refreshing" @click="handleRefresh">
@@ -248,7 +279,7 @@ onMounted(async () => {
         <AppButton
           variant="secondary"
           :loading="actionLoading"
-          :disabled="unreadCount === 0"
+          :disabled="unreadCount === 0 || actionLoading"
           @click="handleMarkAllAsRead"
         >
           <Eye class="h-4 w-4" />
@@ -258,7 +289,7 @@ onMounted(async () => {
         <AppButton
           variant="danger"
           :loading="actionLoading"
-          :disabled="notificationCount === 0"
+          :disabled="actionLoading"
           @click="openClearConfirm"
         >
           <Trash2 class="h-4 w-4" />
@@ -276,9 +307,9 @@ onMounted(async () => {
 
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       <StatsCard
-        title="Total Notifications"
+        title="Matching Notifications"
         :value="stats.total"
-        subtitle="All notification history"
+        subtitle="Across all pages for this filter"
         tone="info"
       >
         <template #badge>
@@ -351,13 +382,11 @@ onMounted(async () => {
     </div>
 
     <div v-else-if="notificationCount > 0" class="space-y-3">
-      <button
+      <article
         v-for="notification in notifications"
         :key="notification.id"
-        type="button"
-        class="w-full rounded-xl border border-border bg-card p-4 text-left shadow-sm transition-colors duration-150 hover:bg-sky-600/20 focus:bg-sky-600/20 focus:outline-none focus:ring-2 focus:ring-sky-200"
-        :class="!notification.read ? 'border-l-4 border-sky-600' : ''"
-        @click="handleOpenNotification(notification)"
+        class="rounded-xl border border-border bg-card p-4 shadow-sm transition-colors duration-150 hover:border-sky-600/40 sm:p-5"
+        :class="!notification.read ? 'border-l-4 border-l-sky-600' : ''"
       >
         <div class="flex gap-3">
           <AppBadge :variant="typeVariant(notification.type)" shape="square" size="md">
@@ -380,29 +409,60 @@ onMounted(async () => {
                   >
                 </div>
 
-                <p class="mt-1 text-sm text-muted-foreground truncate">
+                <p class="mt-1 text-sm leading-6 text-muted-foreground">
                   {{ notification.message }}
                 </p>
               </div>
 
               <div class="shrink-0 text-right">
-                <div class="text-xs font-medium text-muted-foreground">
+                <time
+                  v-if="notification.created_at"
+                  class="text-xs font-medium text-muted-foreground"
+                  :datetime="notification.created_at_raw || undefined"
+                >
                   {{ notification.created_at }}
-                </div>
-                <div v-if="notification.action_url" class="mt-2">
-                  <span class="text-sm font-semibold text-sky-600 dark:text-sky-400"
-                    >Open →</span
-                  >
-                </div>
+                </time>
               </div>
+            </div>
+
+            <details
+              v-if="notification.data && Object.keys(notification.data).length"
+              class="mt-3 rounded-xl border border-border bg-muted/30 px-3 py-2"
+            >
+              <summary class="cursor-pointer text-xs font-semibold text-muted-foreground">
+                Event details
+              </summary>
+              <pre class="mt-2 overflow-x-auto whitespace-pre-wrap break-words text-xs text-card-foreground">{{ JSON.stringify(notification.data, null, 2) }}</pre>
+            </details>
+
+            <div class="mt-4 flex flex-wrap items-center gap-3">
+              <AppButton
+                v-if="safeActionUrl(notification.action_url)"
+                variant="secondary"
+                size="sm"
+                @click="handleOpenNotification(notification)"
+              >
+                {{ notification.read ? "Open" : "Mark read and open" }}
+              </AppButton>
+              <AppButton
+                v-else-if="!notification.read"
+                variant="secondary"
+                size="sm"
+                @click="handleOpenNotification(notification)"
+              >
+                Mark as read
+              </AppButton>
+              <span v-if="notification.read_at" class="text-xs text-muted-foreground">
+                Read {{ notification.read_at }}
+              </span>
             </div>
           </div>
         </div>
-      </button>
+      </article>
     </div>
 
     <EmptyState
-      v-else
+      v-else-if="!errorMessage"
       title="No notifications found"
       message="There are no notifications for the selected filter."
     >

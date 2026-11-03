@@ -11,11 +11,14 @@ import {
   X,
 } from "lucide-vue-next";
 import type { NotificationItem, NotificationType } from "~/composables/useNotification";
+import { useNotificationPageStore } from "~/stores/system/notificationPageStore";
 
 const notificationStore = useNotificationStore();
+const notificationPageStore = useNotificationPageStore();
 const toast = useToast();
 
 const open = ref(false);
+const clearConfirmOpen = ref(false);
 const dropdownRef = ref<HTMLElement | null>(null);
 
 const iconMap = {
@@ -41,7 +44,7 @@ const loading = computed(() => Boolean(notificationStore.loading));
 const actionLoading = computed(() => Boolean(notificationStore.actionLoading));
 
 const errorMessage = computed(() => {
-  return notificationStore.error || notificationStore.errorMessage || "";
+  return notificationStore.error;
 });
 
 const typeVariant = (type: NotificationType) => {
@@ -75,78 +78,98 @@ const handleEscape = (event: KeyboardEvent) => {
   }
 };
 
-const safeRefreshNotifications = async () => {
-  if (typeof notificationStore.refreshNotifications === "function") {
-    await notificationStore.refreshNotifications();
-    return;
+const errorMessageOf = (error: unknown, fallback: string) => {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof error.message === "string"
+  ) {
+    return error.message;
+  }
+  return fallback;
+};
+
+const safeActionUrl = (actionUrl: string | null | undefined) => {
+  if (
+    !actionUrl ||
+    !actionUrl.startsWith("/") ||
+    actionUrl.startsWith("//") ||
+    actionUrl.includes("\\")
+  ) {
+    return null;
   }
 
-  if (typeof notificationStore.fetchNotifications === "function") {
-    await notificationStore.fetchNotifications();
-  }
+  return actionUrl;
 };
 
 const toggleDropdown = async () => {
   open.value = !open.value;
 
   if (open.value) {
-    await safeRefreshNotifications();
+    await notificationStore.refreshNotifications();
   }
 };
 
 const handleRefresh = async () => {
   try {
-    await safeRefreshNotifications();
-  } catch (error: any) {
+    await notificationStore.refreshNotifications();
+  } catch (error: unknown) {
     toast.error(
       "Failed to refresh notifications",
-      error.response?.data?.message || error.message || "Please try again."
+      errorMessageOf(error, "Please try again.")
     );
   }
 };
 
 const handleNotificationClick = async (notification: NotificationItem) => {
   try {
-    if (!notification.read && typeof notificationStore.markAsRead === "function") {
+    if (!notification.read) {
       await notificationStore.markAsRead(notification.id);
+      notificationPageStore.clearCache();
     }
 
-    if (notification.action_url) {
+    const actionUrl = safeActionUrl(notification.action_url);
+    if (actionUrl) {
       close();
-      await navigateTo(notification.action_url);
+      await navigateTo(actionUrl);
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     toast.error(
-      "Action failed",
-      error.response?.data?.message || error.message || "Failed to open notification."
+      "Could not open notification",
+      errorMessageOf(error, "Please try again.")
     );
   }
 };
 
 const handleMarkAllAsRead = async () => {
   try {
-    if (typeof notificationStore.markAllAsRead !== "function") return;
-
     await notificationStore.markAllAsRead();
-  } catch (error: any) {
+    notificationPageStore.clearCache();
+    toast.success("Notifications updated", "All notifications were marked as read.");
+  } catch (error: unknown) {
     toast.error(
-      "Action failed",
-      error.response?.data?.message ||
-        error.message ||
-        "Failed to mark notifications as read."
+      "Could not update notifications",
+      errorMessageOf(error, "Please try again.")
     );
   }
 };
 
+const closeClearConfirm = () => {
+  if (!actionLoading.value) clearConfirmOpen.value = false;
+};
+
 const handleClearAll = async () => {
   try {
-    if (typeof notificationStore.clearAll !== "function") return;
-
+    if (actionLoading.value) return;
     await notificationStore.clearAll();
-  } catch (error: any) {
+    notificationPageStore.clearCache();
+    clearConfirmOpen.value = false;
+    toast.success("Notifications cleared", "All notifications were removed.");
+  } catch (error: unknown) {
     toast.error(
-      "Action failed",
-      error.response?.data?.message || error.message || "Failed to clear notifications."
+      "Could not clear notifications",
+      errorMessageOf(error, "Please try again.")
     );
   }
 };
@@ -155,12 +178,8 @@ onMounted(async () => {
   document.addEventListener("click", handleClickOutside);
   document.addEventListener("keydown", handleEscape);
 
-  try {
-    if (!notificationStore.initialized) {
-      await safeRefreshNotifications();
-    }
-  } catch {
-    // Do not crash the app header if notifications fail.
+  if (!notificationStore.initialized) {
+    await notificationStore.fetchNotifications();
   }
 });
 
@@ -176,6 +195,8 @@ onBeforeUnmount(() => {
       type="button"
       class="relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-card text-card-foreground shadow-sm transition transform hover:scale-105 hover:bg-muted"
       aria-label="Open notifications"
+      :aria-expanded="open"
+      aria-haspopup="true"
       @click="toggleDropdown"
     >
       <Bell class="h-5 w-5" />
@@ -312,7 +333,7 @@ onBeforeUnmount(() => {
                 </p>
 
                 <span
-                  v-if="notification.action_url"
+                  v-if="safeActionUrl(notification.action_url)"
                   class="text-xs font-semibold text-sky-600 dark:text-sky-400"
                 >
                   Open
@@ -330,32 +351,52 @@ onBeforeUnmount(() => {
           <p class="mt-1 text-sm text-muted-foreground">You are all caught up.</p>
         </div>
 
-        <div
-          v-if="notificationCount > 0"
-          class="flex items-center justify-between border-t border-border bg-muted/30 px-4 py-3"
-        >
-          <button
-            type="button"
-            class="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-sky-600 transition hover:bg-sky-50 hover:text-sky-700 disabled:opacity-50 dark:text-sky-400 dark:hover:bg-sky-950/40 dark:hover:text-sky-300"
-            :disabled="actionLoading || unreadCount === 0"
-            @click="handleMarkAllAsRead"
+        <div class="border-t border-border bg-muted/30 px-4 py-3">
+          <div
+            v-if="notificationCount > 0"
+            class="mb-2 flex items-center justify-between"
           >
-            <Loader2 v-if="actionLoading" class="h-3.5 w-3.5 animate-spin" />
-            Mark all as read
-          </button>
+            <button
+              type="button"
+              class="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-sky-600 transition hover:bg-sky-50 hover:text-sky-700 disabled:opacity-50 dark:text-sky-400 dark:hover:bg-sky-950/40 dark:hover:text-sky-300"
+              :disabled="actionLoading || unreadCount === 0"
+              @click="handleMarkAllAsRead"
+            >
+              <Loader2 v-if="actionLoading" class="h-3.5 w-3.5 animate-spin" />
+              Mark all as read
+            </button>
 
-          <button
-            type="button"
-            class="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 hover:text-rose-700 disabled:opacity-50 dark:text-rose-400 dark:hover:bg-rose-950/40 dark:hover:text-rose-300"
-            :disabled="actionLoading"
-            @click="handleClearAll"
+            <button
+              type="button"
+              class="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-rose-600 transition hover:bg-rose-50 hover:text-rose-700 disabled:opacity-50 dark:text-rose-400 dark:hover:bg-rose-950/40 dark:hover:text-rose-300"
+              :disabled="actionLoading"
+              @click="clearConfirmOpen = true"
+            >
+              <Trash2 class="h-3.5 w-3.5" />
+              Clear all
+            </button>
+          </div>
+          <NuxtLink
+            to="/admin/notifications"
+            class="block text-center text-xs font-semibold text-primary underline-offset-4 hover:underline"
+            @click="close"
           >
-            <Trash2 class="h-3.5 w-3.5" />
-            Clear
-          </button>
+            View all notifications
+          </NuxtLink>
         </div>
       </div>
     </Transition>
+
+    <ConfirmDialog
+      :open="clearConfirmOpen"
+      title="Clear all notifications?"
+      message="This permanently deletes all your read and unread notifications. This action cannot be undone."
+      confirm-label="Clear notifications"
+      variant="danger"
+      :loading="actionLoading"
+      @close="closeClearConfirm"
+      @confirm="handleClearAll"
+    />
   </div>
 </template>
 

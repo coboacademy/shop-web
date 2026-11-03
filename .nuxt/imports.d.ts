@@ -56,9 +56,13 @@ export { useRole, RolePagination, RoleListResponse, RolePayload, RolePermissionI
 export { useSettings, SettingItem, SettingsResponse, UpdateSettingsPayload } from '../app/composables/useSettings';
 export { useToast } from '../app/composables/useToast';
 export { useUser, UserStatus, UserItem, UserPagination, UserStats, UserListResponse, CreateUserPayload, UpdateUserPayload, CreateUserResponse } from '../app/composables/useUser';
+export { useUserOrder, UserOrderListItem, UserOrder, UserOrderApiError } from '../app/composables/useUserOrder';
+export { useUserPayment, UserPaymentMethod, UserPayment, UserPaymentApiError } from '../app/composables/useUserPayment';
+export { useUserShipment, UserShipmentStatus, UserShipmentItem, UserShipment, UserShipmentApiError } from '../app/composables/useUserShipment';
 export { useVendor, VendorProfile, AdminVendorUser, AdminVendorStatus, AdminVendorStore, AdminVendor, VendorProfileResponse, VendorPagination, AdminVendorListResponse, AdminVendorFilters, AdminVendorStatistics, AdminVendorStatisticsResponse, AdminVendorDetails, AdminVendorDetailsResponse, AdminVendorActionResponse, Store, CreateStorePayload, UpdateStorePayload, StoreResponse, StoreListResponse, VendorProfileUpdatePayload } from '../app/composables/useVendor';
 export { useVendorOrder, VendorOrderStatus, VendorOrderItem, VendorOrderShipping, VendorOrder, VendorOrderPagination, VendorOrderListResponse, VendorOrderResponse } from '../app/composables/useVendorOrder';
 export { useVendorQuestions, VendorProductQuestion, VendorQuestionPagination, VendorQuestionListResponse, AnswerProductQuestionResponse, VendorQuestionApiError } from '../app/composables/useVendorQuestions';
+export { useWishlist, WishlistProduct, WishlistItem, WishlistPagination, WishlistPage, WishlistApiError } from '../app/composables/useWishlist';
 export { makeCacheKey, isCacheFresh, CacheEntry } from '../app/utils/cache';
 export { downloadBlobFile } from '../app/utils/downloadFile';
 export { useAppCacheStore } from '../app/stores/appCache';

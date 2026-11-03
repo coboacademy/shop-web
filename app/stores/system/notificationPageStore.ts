@@ -105,7 +105,14 @@ export const useNotificationPageStore = defineStore("system-notification-page", 
           filters: normalizedFilters,
           ttl: 1000 * 30,
           force: options.force,
-          request: () => getNotifications(normalizedFilters),
+          request: () =>
+            getNotifications({
+              page: normalizedFilters.page,
+              per_page: normalizedFilters.per_page,
+              ...(normalizedFilters.read === "all"
+                ? {}
+                : { read: normalizedFilters.read }),
+            }),
           onCached: (response) => this.applyResponse(response),
           onFresh: (response) => this.applyResponse(response),
         });

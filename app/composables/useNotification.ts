@@ -9,7 +9,7 @@ export interface NotificationItem {
   data?: Record<string, any> | null
   read: boolean
   read_at?: string | null
-  created_at: string
+  created_at: string | null
   created_at_raw?: string | null
 }
 
@@ -45,7 +45,7 @@ export const useNotification = () => {
   const getNotifications = async (params?: {
     page?: number
     per_page?: number
-    read?: 'all' | 'read' | 'unread'
+    read?: 'read' | 'unread'
   }): Promise<NotificationApiResponse> => {
     try {
       const response = await api.get<NotificationApiResponse>('/notifications', {

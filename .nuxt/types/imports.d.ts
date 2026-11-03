@@ -209,9 +209,13 @@ declare global {
   const useToastStore: typeof import('../../app/stores/toast').useToastStore
   const useTransitionState: typeof import('vue').useTransitionState
   const useUser: typeof import('../../app/composables/useUser').useUser
+  const useUserOrder: typeof import('../../app/composables/useUserOrder').useUserOrder
+  const useUserPayment: typeof import('../../app/composables/useUserPayment').useUserPayment
+  const useUserShipment: typeof import('../../app/composables/useUserShipment').useUserShipment
   const useVendor: typeof import('../../app/composables/useVendor').useVendor
   const useVendorOrder: typeof import('../../app/composables/useVendorOrder').useVendorOrder
   const useVendorQuestions: typeof import('../../app/composables/useVendorQuestions').useVendorQuestions
+  const useWishlist: typeof import('../../app/composables/useWishlist').useWishlist
   const watch: typeof import('vue').watch
   const watchEffect: typeof import('vue').watchEffect
   const watchPostEffect: typeof import('vue').watchPostEffect
@@ -292,6 +296,15 @@ declare global {
   export type { UserStatus, UserItem, UserPagination, UserStats, UserListResponse, CreateUserPayload, UpdateUserPayload, CreateUserResponse } from '../../app/composables/useUser'
   import('../../app/composables/useUser')
   // @ts-ignore
+  export type { UserOrderListItem, UserOrder, UserOrderApiError } from '../../app/composables/useUserOrder'
+  import('../../app/composables/useUserOrder')
+  // @ts-ignore
+  export type { UserPaymentMethod, UserPayment, UserPaymentApiError } from '../../app/composables/useUserPayment'
+  import('../../app/composables/useUserPayment')
+  // @ts-ignore
+  export type { UserShipmentStatus, UserShipmentItem, UserShipment, UserShipmentApiError } from '../../app/composables/useUserShipment'
+  import('../../app/composables/useUserShipment')
+  // @ts-ignore
   export type { VendorProfile, AdminVendorUser, AdminVendorStatus, AdminVendorStore, AdminVendor, VendorProfileResponse, VendorPagination, AdminVendorListResponse, AdminVendorFilters, AdminVendorStatistics, AdminVendorStatisticsResponse, AdminVendorDetails, AdminVendorDetailsResponse, AdminVendorActionResponse, Store, CreateStorePayload, UpdateStorePayload, StoreResponse, StoreListResponse, VendorProfileUpdatePayload } from '../../app/composables/useVendor'
   import('../../app/composables/useVendor')
   // @ts-ignore
@@ -300,6 +313,9 @@ declare global {
   // @ts-ignore
   export type { VendorProductQuestion, VendorQuestionPagination, VendorQuestionListResponse, AnswerProductQuestionResponse, VendorQuestionApiError } from '../../app/composables/useVendorQuestions'
   import('../../app/composables/useVendorQuestions')
+  // @ts-ignore
+  export type { WishlistProduct, WishlistItem, WishlistPagination, WishlistPage, WishlistApiError } from '../../app/composables/useWishlist'
+  import('../../app/composables/useWishlist')
   // @ts-ignore
   export type { CacheEntry } from '../../app/utils/cache'
   import('../../app/utils/cache')
@@ -522,9 +538,13 @@ declare module 'vue' {
     readonly useToastStore: UnwrapRef<typeof import('../../app/stores/toast')['useToastStore']>
     readonly useTransitionState: UnwrapRef<typeof import('vue')['useTransitionState']>
     readonly useUser: UnwrapRef<typeof import('../../app/composables/useUser')['useUser']>
+    readonly useUserOrder: UnwrapRef<typeof import('../../app/composables/useUserOrder')['useUserOrder']>
+    readonly useUserPayment: UnwrapRef<typeof import('../../app/composables/useUserPayment')['useUserPayment']>
+    readonly useUserShipment: UnwrapRef<typeof import('../../app/composables/useUserShipment')['useUserShipment']>
     readonly useVendor: UnwrapRef<typeof import('../../app/composables/useVendor')['useVendor']>
     readonly useVendorOrder: UnwrapRef<typeof import('../../app/composables/useVendorOrder')['useVendorOrder']>
     readonly useVendorQuestions: UnwrapRef<typeof import('../../app/composables/useVendorQuestions')['useVendorQuestions']>
+    readonly useWishlist: UnwrapRef<typeof import('../../app/composables/useWishlist')['useWishlist']>
     readonly watch: UnwrapRef<typeof import('vue')['watch']>
     readonly watchEffect: UnwrapRef<typeof import('vue')['watchEffect']>
     readonly watchPostEffect: UnwrapRef<typeof import('vue')['watchPostEffect']>

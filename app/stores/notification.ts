@@ -58,6 +58,8 @@ export const useNotificationStore = defineStore('notification', {
       try {
         const { markNotificationAsRead } = useNotification()
         const response = await markNotificationAsRead(id)
+        const appCache = useAppCacheStore()
+        appCache.forgetByPrefix('notifications:')
 
         const updatedNotification = response.data.notification
 
@@ -71,7 +73,7 @@ export const useNotificationStore = defineStore('notification', {
           )
         }
 
-        this.unreadCount = response.data.unread_count || 0
+        this.unreadCount = response.data.unread_count ?? 0
       } finally {
         this.actionLoading = false
       }
@@ -85,6 +87,8 @@ export const useNotificationStore = defineStore('notification', {
       try {
         const { markAllNotificationsAsRead } = useNotification()
         const response = await markAllNotificationsAsRead()
+        const appCache = useAppCacheStore()
+        appCache.forgetByPrefix('notifications:')
 
         this.notifications = this.notifications.map((item) => ({
           ...item,
@@ -92,7 +96,7 @@ export const useNotificationStore = defineStore('notification', {
           read_at: item.read_at || new Date().toISOString(),
         }))
 
-        this.unreadCount = response.data.unread_count || 0
+        this.unreadCount = response.data.unread_count ?? 0
       } finally {
         this.actionLoading = false
       }
@@ -106,9 +110,11 @@ export const useNotificationStore = defineStore('notification', {
       try {
         const { clearNotifications } = useNotification()
         const response = await clearNotifications()
+        const appCache = useAppCacheStore()
+        appCache.forgetByPrefix('notifications:')
 
         this.notifications = []
-        this.unreadCount = response.data.unread_count || 0
+        this.unreadCount = response.data.unread_count ?? 0
         this.pagination = null
       } finally {
         this.actionLoading = false

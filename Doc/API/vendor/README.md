@@ -41,7 +41,11 @@ Vendor endpoint references are grouped by resource:
     [remove](./products/inventory/remove-product-stock.md), or
     [adjust](./products/inventory/adjust-product-stock.md) stock; and view
     [inventory movements](./products/inventory/product-inventory-movements.md).
-  - [`variants/`](./products/variants/) — variant-level operations.
+  - [`variants/`](./products/variants/) — [list](./products/variants/list-product-variants.md),
+    [create](./products/variants/create-product-variant.md),
+    [view](./products/variants/product-variant-detail.md),
+    [update](./products/variants/update-product-variant.md), and
+    [delete](./products/variants/delete-product-variant.md) product variants.
     - [`inventory/`](./products/variants/inventory/) — [view](./products/variants/inventory/variant-inventory-detail.md),
       [add](./products/variants/inventory/add-variant-stock.md),
       [remove](./products/variants/inventory/remove-variant-stock.md), or
@@ -51,7 +55,10 @@ Vendor endpoint references are grouped by resource:
 - [`orders/`](./orders/) — [list](./orders/list-vendor-orders.md),
   [view](./orders/vendor-order-detail.md), and
   [update status](./orders/update-vendor-order-status.md) for vendor orders.
-- [`questions/`](./questions/) — [answer product questions](./questions/answer-product-question.md).
+- [`notifications/`](./notifications/) — view and manage notifications
+  addressed to the authenticated vendor account.
+- [`questions/`](./questions/) — [list](./questions/list-vendor-questions.md) and
+  [answer](./questions/answer-product-question.md) product questions.
 
 All endpoint paths include the `/api` prefix. Authentication and permissions
 are described on each endpoint reference.
