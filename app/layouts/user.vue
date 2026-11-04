@@ -15,9 +15,11 @@ import {
   User,
   X,
 } from "lucide-vue-next";
+import { useNotificationPageStore } from "~/stores/system/notificationPageStore";
 
 const authStore = useAuthStore();
 const notificationStore = useNotificationStore();
+const notificationPageStore = useNotificationPageStore();
 const route = useRoute();
 const toast = useToast();
 
@@ -129,6 +131,8 @@ const handleLogout = async () => {
 
   try {
     await authStore.logout();
+    notificationStore.clearLocal();
+    notificationPageStore.resetState();
     closeHeaderMenus();
     await navigateTo("/login");
   } catch (error: any) {
@@ -144,7 +148,9 @@ watch(
 );
 
 onMounted(() => {
-  void notificationStore.fetchNotifications();
+  if (route.path !== "/app/notifications") {
+    void notificationStore.fetchNotifications();
+  }
   document.addEventListener("click", handleClickOutside);
   document.addEventListener("keydown", handleEscape);
 });

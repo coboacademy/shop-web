@@ -16,6 +16,7 @@ import { useNotificationPageStore } from "~/stores/system/notificationPageStore"
 const notificationStore = useNotificationStore();
 const notificationPageStore = useNotificationPageStore();
 const toast = useToast();
+const route = useRoute();
 
 const open = ref(false);
 const clearConfirmOpen = ref(false);
@@ -46,6 +47,15 @@ const actionLoading = computed(() => Boolean(notificationStore.actionLoading));
 const errorMessage = computed(() => {
   return notificationStore.error;
 });
+const notificationsPagePath = computed(() =>
+  route.path.startsWith("/vendor/") ? "/vendor/notifications" : "/admin/notifications",
+);
+
+const isNotificationsPage = computed(
+  () =>
+    route.path === "/admin/notifications" ||
+    route.path === "/vendor/notifications",
+);
 
 const typeVariant = (type: NotificationType) => {
   const variants = {
@@ -95,12 +105,41 @@ const safeActionUrl = (actionUrl: string | null | undefined) => {
     !actionUrl ||
     !actionUrl.startsWith("/") ||
     actionUrl.startsWith("//") ||
-    actionUrl.includes("\\")
+    actionUrl.includes("\\") ||
+    /[\u0000-\u001f]/.test(actionUrl)
   ) {
     return null;
   }
 
   return actionUrl;
+};
+
+const refreshOrResetPageStore = async () => {
+  if (!isNotificationsPage.value) {
+    notificationPageStore.resetState();
+    return;
+  }
+
+  const loaded = await notificationPageStore.fetchNotifications(
+    notificationPageStore.lastFilters,
+    { silent: true },
+  );
+  const userId = useAuthStore().user?.id;
+  if (!loaded || userId === undefined) return;
+
+  if (
+    notificationPageStore.lastFilters.page === 1 &&
+    notificationPageStore.lastFilters.read === "all"
+  ) {
+    notificationStore.syncFromPageData(
+      notificationPageStore.notifications,
+      notificationPageStore.pagination,
+      notificationPageStore.unreadCount,
+      userId,
+    );
+  } else {
+    notificationStore.setUnreadCount(notificationPageStore.unreadCount, userId);
+  }
 };
 
 const toggleDropdown = async () => {
@@ -126,7 +165,7 @@ const handleNotificationClick = async (notification: NotificationItem) => {
   try {
     if (!notification.read) {
       await notificationStore.markAsRead(notification.id);
-      notificationPageStore.clearCache();
+      await refreshOrResetPageStore();
     }
 
     const actionUrl = safeActionUrl(notification.action_url);
@@ -145,7 +184,7 @@ const handleNotificationClick = async (notification: NotificationItem) => {
 const handleMarkAllAsRead = async () => {
   try {
     await notificationStore.markAllAsRead();
-    notificationPageStore.clearCache();
+    await refreshOrResetPageStore();
     toast.success("Notifications updated", "All notifications were marked as read.");
   } catch (error: unknown) {
     toast.error(
@@ -163,7 +202,7 @@ const handleClearAll = async () => {
   try {
     if (actionLoading.value) return;
     await notificationStore.clearAll();
-    notificationPageStore.clearCache();
+    notificationPageStore.clearLocalNotifications();
     clearConfirmOpen.value = false;
     toast.success("Notifications cleared", "All notifications were removed.");
   } catch (error: unknown) {
@@ -178,7 +217,7 @@ onMounted(async () => {
   document.addEventListener("click", handleClickOutside);
   document.addEventListener("keydown", handleEscape);
 
-  if (!notificationStore.initialized) {
+  if (!isNotificationsPage.value && !notificationStore.initialized) {
     await notificationStore.fetchNotifications();
   }
 });
@@ -329,7 +368,7 @@ onBeforeUnmount(() => {
                 <p
                   class="text-xs text-muted-foreground group-hover:text-accent-foreground/70"
                 >
-                  {{ notification.created_at }}
+                  {{ notification.created_at || notification.created_at_raw }}
                 </p>
 
                 <span
@@ -377,7 +416,7 @@ onBeforeUnmount(() => {
             </button>
           </div>
           <NuxtLink
-            to="/admin/notifications"
+            :to="notificationsPagePath"
             class="block text-center text-xs font-semibold text-primary underline-offset-4 hover:underline"
             @click="close"
           >

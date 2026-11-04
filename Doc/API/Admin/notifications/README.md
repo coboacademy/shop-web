@@ -12,10 +12,10 @@ authenticated notification API:
 
 | Action | Method | Path | Reference |
 |---|---|---|---|
-| List notifications | `GET` | `/api/notifications` | [List notifications](../../user/notifications/list-notifications.md) |
-| Mark one as read | `PATCH` | `/api/notifications/{notification}/read` | [Mark a notification as read](../../user/notifications/read-notification.md) |
-| Mark all as read | `PATCH` | `/api/notifications/read-all` | [Mark all as read](../../user/notifications/read-all-notifications.md) |
-| Clear all | `DELETE` | `/api/notifications/clear` | [Clear notifications](../../user/notifications/clear-notifications.md) |
+| List notifications | `GET` | `/api/notifications` | [List notifications](../../notifications/list-notifications.md) |
+| Mark one as read | `PATCH` | `/api/notifications/{notification}/read` | [Mark a notification as read](../../notifications/read-notification.md) |
+| Mark all as read | `PATCH` | `/api/notifications/read-all` | [Mark all as read](../../notifications/read-all-notifications.md) |
+| Clear all | `DELETE` | `/api/notifications/clear` | [Clear notifications](../../notifications/clear-notifications.md) |
 
 These routes require a Sanctum bearer token, a verified email address, and an
 active account. They do not have a notification-specific permission

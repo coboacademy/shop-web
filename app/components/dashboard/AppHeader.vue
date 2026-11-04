@@ -3,8 +3,6 @@ import { Menu, Search } from "lucide-vue-next";
 
 defineProps<{
   sidebarCollapsed?: boolean;
-  title: string;
-  subtitle?: string;
 }>();
 
 const emit = defineEmits<{
@@ -26,10 +24,12 @@ const pageTitle = computed(() => {
     "/admin/menus": "Menus",
     "/admin/settings": "Settings",
     "/admin/countries": "Countries",
+    "/admin/notifications": "Notifications",
     "/notifications": "Notifications",
     "/ui-components": "UI Components",
     "/app/profile": "Profile",
     "/app/settings": "Settings",
+    "/vendor/notifications": "Notifications",
   };
 
   return map[route.path] || "Dashboard";

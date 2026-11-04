@@ -29,6 +29,7 @@ interface _GlobalComponents {
   DeleteMenuModal: typeof import("../../app/components/menus/DeleteMenuModal.vue")['default']
   MenuFormModal: typeof import("../../app/components/menus/MenuFormModal.vue")['default']
   MenuIcon: typeof import("../../app/components/menus/MenuIcon.vue")['default']
+  NotificationInbox: typeof import("../../app/components/notifications/NotificationInbox.vue")['default']
   ImportPermissionModal: typeof import("../../app/components/permissions/ImportPermissionModal.vue")['default']
   AssignRolePermissionsModal: typeof import("../../app/components/roles/AssignRolePermissionsModal.vue")['default']
   CloneRoleModal: typeof import("../../app/components/roles/CloneRoleModal.vue")['default']
@@ -106,6 +107,7 @@ interface _GlobalComponents {
   LazyDeleteMenuModal: LazyComponent<typeof import("../../app/components/menus/DeleteMenuModal.vue")['default']>
   LazyMenuFormModal: LazyComponent<typeof import("../../app/components/menus/MenuFormModal.vue")['default']>
   LazyMenuIcon: LazyComponent<typeof import("../../app/components/menus/MenuIcon.vue")['default']>
+  LazyNotificationInbox: LazyComponent<typeof import("../../app/components/notifications/NotificationInbox.vue")['default']>
   LazyImportPermissionModal: LazyComponent<typeof import("../../app/components/permissions/ImportPermissionModal.vue")['default']>
   LazyAssignRolePermissionsModal: LazyComponent<typeof import("../../app/components/roles/AssignRolePermissionsModal.vue")['default']>
   LazyCloneRoleModal: LazyComponent<typeof import("../../app/components/roles/CloneRoleModal.vue")['default']>

@@ -2,6 +2,7 @@
 const sidebarOpen = ref(false);
 const sidebarCollapsed = ref(false);
 const commandOpen = ref(false);
+const route = useRoute();
 
 const toggleSidebar = () => {
   sidebarOpen.value = !sidebarOpen.value;
@@ -40,7 +41,12 @@ const handleKeydown = (event: KeyboardEvent) => {
 onMounted(async () => {
   window.addEventListener("keydown", handleKeydown);
 
-  await notificationStore.fetchNotifications();
+  if (
+    route.path !== "/admin/notifications" &&
+    route.path !== "/vendor/notifications"
+  ) {
+    await notificationStore.fetchNotifications();
+  }
 
   notificationTimer = setInterval(() => {
     notificationStore.refreshNotifications();

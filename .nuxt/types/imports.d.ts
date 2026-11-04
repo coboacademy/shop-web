@@ -263,7 +263,7 @@ declare global {
   export type { MenuPayload, MenuResponse, ReorderMenuPayload, MenuItem } from '../../app/composables/useMenu'
   import('../../app/composables/useMenu')
   // @ts-ignore
-  export type { NotificationType, NotificationItem, NotificationPagination, NotificationApiResponse } from '../../app/composables/useNotification'
+  export type { NotificationType, NotificationItem, NotificationPagination, NotificationListResponse, NotificationReadResponse, NotificationCountResponse } from '../../app/composables/useNotification'
   import('../../app/composables/useNotification')
   // @ts-ignore
   export type { SendPasswordOtpPayload, VerifyPasswordOtpPayload, ResetPasswordWithOtpPayload, PasswordOtpResponse } from '../../app/composables/usePasswordOtp'

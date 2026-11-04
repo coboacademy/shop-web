@@ -44,7 +44,7 @@ export { useDashboard, DashboardStats, DashboardRecentUser, DashboardAuditUser, 
 export { useEmailOtp, EmailOtpResponse } from '../app/composables/useEmailOtp';
 export { useEmailVerification, VerifyEmailResponse } from '../app/composables/useEmailVerification';
 export { useMenu, MenuPayload, MenuResponse, ReorderMenuPayload, MenuItem } from '../app/composables/useMenu';
-export { useNotification, NotificationType, NotificationItem, NotificationPagination, NotificationApiResponse } from '../app/composables/useNotification';
+export { useNotification, NotificationType, NotificationItem, NotificationPagination, NotificationListResponse, NotificationReadResponse, NotificationCountResponse } from '../app/composables/useNotification';
 export { usePasswordOtp, SendPasswordOtpPayload, VerifyPasswordOtpPayload, ResetPasswordWithOtpPayload, PasswordOtpResponse } from '../app/composables/usePasswordOtp';
 export { usePasswordReset, ForgotPasswordPayload, ResetPasswordPayload, PasswordResetResponse } from '../app/composables/usePasswordReset';
 export { usePermission, PermissionItem, PermissionPagination, PermissionListResponse, PermissionPayload, PermissionQueryParams, PermissionStats } from '../app/composables/usePermission';
