@@ -9,6 +9,7 @@ import {
   Truck,
   Users,
 } from "lucide-vue-next";
+import type { VendorProfile } from "~/composables/useVendor";
 import { useVendorOrder, type VendorOrder } from "~/composables/useVendorOrder";
 
 definePageMeta({
@@ -19,17 +20,93 @@ definePageMeta({
 });
 
 const authStore = useAuthStore();
+const notificationStore = useNotificationStore();
 const { getProfile } = useVendor();
 const { getOrders } = useVendorOrder();
+
 const user = computed(() => authStore.user);
-const vendor = ref<any>(null);
+const vendor = ref<VendorProfile | null>(null);
 const loadingVendor = ref(false);
-const showKycWarning = computed(() => !vendor.value);
 const latestPageOrders = ref<VendorOrder[]>([]);
 const recentOrders = ref<VendorOrder[]>([]);
 const orderTotal = ref(0);
 const loadingOrders = ref(false);
 const ordersError = ref("");
+
+const vendorStatus = computed(() => String(vendor.value?.status ?? "").trim().toLowerCase());
+
+const latestRejectedReason = computed(() => {
+  if (vendorStatus.value !== "rejected") return "";
+
+  const rejectedNotification = [...notificationStore.notifications].find((item) => {
+    const status = String(item.data?.status ?? "").trim().toLowerCase();
+    const title = item.title.toLowerCase();
+    const message = item.message.toLowerCase();
+
+    return status === "rejected" || title.includes("rejected") || message.includes("rejected");
+  });
+
+  if (!rejectedNotification) return "";
+
+  const reason = rejectedNotification.data?.reason;
+  return typeof reason === "string" && reason.trim() ? reason.trim() : "";
+});
+
+const kycAlert = computed(() => {
+  if (!vendor.value) {
+    return {
+      type: "warning" as const,
+      title: "Complete your business verification",
+      message:
+        "Submit your business information and required documents to begin the verification process.",
+      actionLabel: "Submit KYC",
+      actionTo: "/vendor/kyc",
+    };
+  }
+
+  if (vendorStatus.value === "pending") {
+    return {
+      type: "info" as const,
+      title: "Your application is being reviewed",
+      message:
+        "Your KYC information has been submitted successfully. Please wait while our administration team reviews your application. We will notify you when the review is complete.",
+    };
+  }
+
+  if (vendorStatus.value === "rejected") {
+    const reason = latestRejectedReason.value;
+    return {
+      type: "warning" as const,
+      title: "Your application needs attention",
+      message: reason
+        ? `Your KYC application was rejected. Please review the rejection reason, update your information, and submit it again. Rejection reason: ${reason}`
+        : "Your KYC application was rejected. Please review the rejection reason, update your information, and submit it again.",
+      actionLabel: "Review and Resubmit",
+      actionTo: "/vendor/kyc",
+    };
+  }
+
+  if (vendorStatus.value === "approved") {
+    return {
+      type: "success" as const,
+      title: "Your vendor account is verified!",
+      message:
+        "Your KYC application has been approved. You can now continue using the vendor features available to your account.",
+    };
+  }
+
+  if (vendorStatus.value === "suspended") {
+    return {
+      type: "warning" as const,
+      title: "Your vendor account is suspended",
+      message:
+        "Your vendor account has been suspended. Please review your notifications for more information or instructions from the platform.",
+    };
+  }
+
+  return null;
+});
+
 const orderStats = computed(() => ({
   pending: latestPageOrders.value.filter((order) => order.status === "pending").length,
   fulfilling: latestPageOrders.value.filter(
@@ -41,7 +118,7 @@ const quickActions = [
   { title: "Manage products", to: "/vendor/products", icon: Store, tone: "info" },
   { title: "Create a store", to: "/vendor/stores", icon: Store, tone: "info" },
   { title: "Orders center", to: "/vendor/orders", icon: CreditCard, tone: "success" },
-  { title: "Manage KYC", to: "/vendor/profile", icon: ShieldCheck, tone: "warning" },
+  { title: "Manage KYC", to: "/vendor/kyc", icon: ShieldCheck, tone: "warning" },
   { title: "Vendor profile", to: "/vendor/profile", icon: Users, tone: "warning" },
 ];
 
@@ -51,6 +128,10 @@ const fetchVendorProfile = async () => {
   try {
     const response = await getProfile();
     vendor.value = response.data.vendor;
+
+    if (vendorStatus.value === "rejected") {
+      await notificationStore.fetchNotifications(true);
+    }
   } catch (error: any) {
     if (error.status === 404) {
       vendor.value = null;
@@ -96,17 +177,17 @@ const statusVariant = (status: VendorOrder["status"]) => {
 <template>
   <div class="space-y-6">
     <AlertMessage
-      v-if="!loadingVendor && showKycWarning"
-      type="warning"
-      title="Submit your KYC"
-      message="Your vendor profile is not complete yet. Complete your business details to submit KYC and unlock full vendor features."
+      v-if="!loadingVendor && kycAlert"
+      :type="kycAlert.type"
+      :title="kycAlert.title"
+      :message="kycAlert.message"
     >
-      <div class="flex flex-wrap gap-3">
+      <div v-if="kycAlert.actionTo" class="flex flex-wrap gap-3">
         <NuxtLink
-          to="/vendor/kyc"
+          :to="kycAlert.actionTo"
           class="inline-flex items-center rounded-lg bg-amber-600 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-500"
         >
-          Submit KYC
+          {{ kycAlert.actionLabel }}
         </NuxtLink>
       </div>
     </AlertMessage>
@@ -180,10 +261,7 @@ const statusVariant = (status: VendorOrder["status"]) => {
               <p class="font-semibold text-card-foreground">
                 {{ formatOrderAmount(order.items.reduce((total, item) => total + Number(item.total || 0), 0)) }}
               </p>
-              <AppBadge
-                :variant="statusVariant(order.status)"
-                size="sm"
-              >
+              <AppBadge :variant="statusVariant(order.status)" size="sm">
                 {{ order.status }}
               </AppBadge>
             </div>
