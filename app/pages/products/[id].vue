@@ -2,6 +2,7 @@
 import {
   ArrowLeft,
   Check,
+  Heart,
   ImageOff,
   MessageCircle,
   PackageCheck,
@@ -18,6 +19,7 @@ import {
   type PublicProductVariant,
 } from "~/composables/usePublicProducts";
 import { useCart, type CartApiError } from "~/composables/useCart";
+import { useWishlist, type WishlistApiError } from "~/composables/useWishlist";
 
 definePageMeta({
   layout: "public",
@@ -28,7 +30,13 @@ const route = useRoute();
 const authStore = useAuthStore();
 const toast = useToast();
 const { addItem } = useCart();
-const { getProduct, getProductReviews, getProductQuestions } = usePublicProducts();
+const { addItem: addWishlistItem } = useWishlist();
+const {
+  getProduct,
+  getProductReviews,
+  getProductQuestions,
+  createProductQuestion,
+} = usePublicProducts();
 const product = ref<PublicProduct | null>(null);
 const reviews = ref<PublicProductReview[]>([]);
 const questions = ref<PublicProductQuestion[]>([]);
@@ -44,6 +52,12 @@ const questionsError = ref("");
 const cartQuantity = ref(1);
 const addingToCart = ref(false);
 const cartError = ref("");
+const addingToWishlist = ref(false);
+const wishlistError = ref("");
+const questionDraft = ref("");
+const questionSubmitError = ref("");
+const questionFieldError = ref("");
+const submittingQuestion = ref(false);
 
 const productId = computed(() => String(route.params.id || ""));
 const images = computed(() => product.value?.images || []);
@@ -119,6 +133,30 @@ const getErrorMessage = (error: unknown, fallback: string) =>
     : fallback;
 
 const isCartApiError = (error: unknown): error is CartApiError =>
+  typeof error === "object" &&
+  error !== null &&
+  "message" in error &&
+  typeof error.message === "string" &&
+  "errors" in error &&
+  typeof error.errors === "object" &&
+  error.errors !== null &&
+  "status" in error &&
+  typeof error.status === "number";
+
+const isWishlistApiError = (error: unknown): error is WishlistApiError =>
+  typeof error === "object" &&
+  error !== null &&
+  "message" in error &&
+  typeof error.message === "string" &&
+  "errors" in error &&
+  typeof error.errors === "object" &&
+  error.errors !== null &&
+  "status" in error &&
+  typeof error.status === "number";
+
+const isQuestionApiError = (
+  error: unknown,
+): error is { message: string; errors: Record<string, string[]>; status: number } =>
   typeof error === "object" &&
   error !== null &&
   "message" in error &&
@@ -205,6 +243,80 @@ const addProductToCart = async () => {
     toast.error("Could not add to cart", cartError.value);
   } finally {
     addingToCart.value = false;
+  }
+};
+
+const saveToWishlist = async () => {
+  wishlistError.value = "";
+  if (!product.value) return;
+  if (!isCustomer.value) {
+    await navigateTo(loginLink.value);
+    return;
+  }
+
+  addingToWishlist.value = true;
+  try {
+    const response = await addWishlistItem(product.value.id);
+    toast.success("Saved to wishlist", response.message);
+  } catch (error: unknown) {
+    if (isWishlistApiError(error) && error.status === 401) {
+      await navigateTo(loginLink.value);
+      return;
+    }
+
+    wishlistError.value = getErrorMessage(
+      error,
+      "Could not save this product to your wishlist.",
+    );
+    toast.error("Wishlist update failed", wishlistError.value);
+  } finally {
+    addingToWishlist.value = false;
+  }
+};
+
+const submitProductQuestion = async () => {
+  questionSubmitError.value = "";
+  questionFieldError.value = "";
+  const questionText = questionDraft.value.trim();
+
+  if (!product.value || !isCustomer.value) return;
+  if (!questionText) {
+    questionFieldError.value = "Enter a question before submitting.";
+    return;
+  }
+  if (questionText.length > 2000) {
+    questionFieldError.value = "Questions must be 2,000 characters or fewer.";
+    return;
+  }
+
+  submittingQuestion.value = true;
+  try {
+    const response = await createProductQuestion({
+      product_id: product.value.id,
+      question: questionText,
+    });
+    questions.value = [
+      response.data.question,
+      ...questions.value.filter((item) => item.id !== response.data.question.id),
+    ];
+    questionDraft.value = "";
+    toast.success("Question submitted", response.message);
+  } catch (error: unknown) {
+    if (isQuestionApiError(error) && error.status === 401) {
+      await navigateTo(loginLink.value);
+      return;
+    }
+
+    questionFieldError.value = isQuestionApiError(error)
+      ? error.errors.question?.[0] || ""
+      : "";
+    questionSubmitError.value = getErrorMessage(
+      error,
+      "Could not submit your question. Please try again.",
+    );
+    toast.error("Question not submitted", questionSubmitError.value);
+  } finally {
+    submittingQuestion.value = false;
   }
 };
 
@@ -478,6 +590,24 @@ useHead({
 
             <div class="mt-5">
               <template v-if="isCustomer">
+                <button
+                  type="button"
+                  class="mb-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-border bg-background px-4 text-sm font-semibold text-card-foreground transition hover:border-rose-300 hover:bg-rose-50 hover:text-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:border-rose-800 dark:hover:bg-rose-950/30 dark:hover:text-rose-300"
+                  :disabled="addingToWishlist"
+                  @click="saveToWishlist"
+                >
+                  <Heart class="h-4 w-4" />
+                  {{ addingToWishlist ? "Saving…" : "Save to wishlist" }}
+                </button>
+                <p v-if="wishlistError" class="mb-3 text-sm text-destructive" role="alert">
+                  {{ wishlistError }}
+                  <NuxtLink
+                    to="/app/wishlist"
+                    class="ml-1 font-semibold underline underline-offset-2"
+                  >
+                    View wishlist
+                  </NuxtLink>
+                </p>
                 <div class="flex flex-col gap-3 sm:flex-row">
                   <label class="sr-only" for="product-quantity">Quantity</label>
                   <input
@@ -574,6 +704,66 @@ useHead({
                 <h2 class="mt-2 text-2xl font-bold">Questions &amp; answers</h2>
               </div>
               <span class="text-sm text-muted-foreground">{{ questions.length }} shown</span>
+            </div>
+            <form
+              v-if="isCustomer"
+              class="mt-5 rounded-2xl border border-border bg-card p-5"
+              @submit.prevent="submitProductQuestion"
+            >
+              <label for="product-question" class="block text-sm font-semibold">
+                Ask about this product
+              </label>
+              <p class="mt-1 text-xs leading-5 text-muted-foreground">
+                Your question will be shared with the store. Maximum 2,000 characters.
+              </p>
+              <textarea
+                id="product-question"
+                v-model="questionDraft"
+                required
+                maxlength="2000"
+                rows="4"
+                :aria-invalid="Boolean(questionFieldError)"
+                aria-describedby="product-question-help"
+                placeholder="What would you like to know?"
+                class="mt-3 w-full resize-y rounded-xl border border-border bg-background px-3 py-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 aria-[invalid=true]:border-destructive"
+                :disabled="submittingQuestion"
+              />
+              <div class="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p id="product-question-help" class="text-xs text-muted-foreground">
+                  {{ questionDraft.length }}/2,000 characters
+                </p>
+                <button
+                  type="submit"
+                  class="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                  :disabled="submittingQuestion || !questionDraft.trim()"
+                >
+                  <MessageCircle class="h-4 w-4" />
+                  {{ submittingQuestion ? "Submitting…" : "Submit question" }}
+                </button>
+              </div>
+              <p v-if="questionFieldError" class="mt-2 text-sm text-destructive" role="alert">
+                {{ questionFieldError }}
+              </p>
+              <p v-else-if="questionSubmitError" class="mt-2 text-sm text-destructive" role="alert">
+                {{ questionSubmitError }}
+              </p>
+            </form>
+            <div
+              v-else-if="!authStore.isAuthenticated"
+              class="mt-5 flex flex-col gap-3 rounded-2xl border border-border bg-card p-5 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div>
+                <p class="text-sm font-semibold">Have a question about this product?</p>
+                <p class="mt-1 text-xs text-muted-foreground">
+                  Sign in with a customer account to ask the store.
+                </p>
+              </div>
+              <NuxtLink
+                :to="loginLink"
+                class="inline-flex h-10 shrink-0 items-center justify-center rounded-xl border border-border px-4 text-sm font-semibold transition hover:bg-muted"
+              >
+                Sign in to ask
+              </NuxtLink>
             </div>
             <p v-if="questionsError" class="mt-5 rounded-xl bg-destructive/5 p-4 text-sm text-destructive">
               {{ questionsError }}

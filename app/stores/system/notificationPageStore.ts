@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import type {
   NotificationItem,
+  NotificationListResponse,
   NotificationPagination,
 } from "~/composables/useNotification";
 
@@ -8,16 +9,6 @@ export interface NotificationFilters {
   page?: number;
   per_page?: number;
   read?: "all" | "read" | "unread";
-}
-
-interface NotificationListResponse {
-  status: string;
-  message: string;
-  data: {
-    notifications: NotificationItem[];
-    pagination: NotificationPagination;
-    unread_count: number;
-  };
 }
 
 const defaultPagination = (): NotificationPagination => ({
@@ -32,6 +23,8 @@ export const useNotificationPageStore = defineStore("system-notification-page", 
     notifications: [] as NotificationItem[],
     pagination: defaultPagination(),
     unreadCount: 0,
+    notificationUserId: null as number | null,
+    requestSequence: 0,
 
     loading: false,
     refreshing: false,
@@ -47,9 +40,9 @@ export const useNotificationPageStore = defineStore("system-notification-page", 
   getters: {
     hasData: (state) => state.notifications.length > 0,
 
-    currentPage: (state) => state.pagination?.current_page ?? 1,
-    lastPage: (state) => state.pagination?.last_page ?? 1,
-    totalItems: (state) => state.pagination?.total ?? 0,
+    currentPage: (state) => state.pagination.current_page,
+    lastPage: (state) => state.pagination.last_page,
+    totalItems: (state) => state.pagination.total,
 
     shownItems: (state) => state.notifications.length,
   },
@@ -63,35 +56,34 @@ export const useNotificationPageStore = defineStore("system-notification-page", 
       };
     },
 
-    applyResponse(response: NotificationListResponse | any) {
-      const data = response?.data || {};
-
-      this.notifications = Array.isArray(data.notifications)
-        ? data.notifications
-        : [];
-
-      this.pagination = {
-        ...defaultPagination(),
-        ...(data.pagination || {}),
-      };
-
-      this.unreadCount = data.unread_count ?? 0;
+    applyResponse(response: NotificationListResponse) {
+      this.notifications = response.data.notifications;
+      this.pagination = response.data.pagination;
+      this.unreadCount = response.data.unread_count;
     },
 
     async fetchNotifications(
       filters: NotificationFilters = {},
       options: {
-        force?: boolean;
         silent?: boolean;
-      } = {}
-    ) {
+      } = {},
+    ): Promise<boolean> {
       const { getNotifications } = useNotification();
-      const { cachedRequest } = useCachedRequest();
-
+      const authStore = useAuthStore();
       const normalizedFilters = this.normalizeFilters(filters);
+      const currentUserId = authStore.user?.id ?? null;
+
+      if (this.notificationUserId !== currentUserId) {
+        this.requestSequence += 1;
+        this.notifications = [];
+        this.pagination = defaultPagination();
+        this.unreadCount = 0;
+        this.notificationUserId = currentUserId;
+      }
 
       this.lastFilters = normalizedFilters;
       this.errorMessage = "";
+      const requestSequence = ++this.requestSequence;
 
       if (this.hasData || options.silent) {
         this.refreshing = true;
@@ -100,82 +92,55 @@ export const useNotificationPageStore = defineStore("system-notification-page", 
       }
 
       try {
-        await cachedRequest<NotificationListResponse>({
-          module: "notifications",
-          filters: normalizedFilters,
-          ttl: 1000 * 30,
-          force: options.force,
-          request: () => getNotifications(normalizedFilters),
-          onCached: (response) => this.applyResponse(response),
-          onFresh: (response) => this.applyResponse(response),
+        const response = await getNotifications({
+          page: normalizedFilters.page,
+          per_page: normalizedFilters.per_page,
+          ...(normalizedFilters.read === "all"
+            ? {}
+            : { read: normalizedFilters.read }),
         });
-      } catch (error: any) {
-        this.errorMessage =
-          error.response?.data?.message ||
-          error.message ||
-          "Failed to load notifications";
+
+        if (
+          this.requestSequence === requestSequence &&
+          authStore.user?.id === currentUserId
+        ) {
+          this.applyResponse(response);
+          return true;
+        }
+        return false;
+      } catch (error: unknown) {
+        if (
+          this.requestSequence === requestSequence &&
+          authStore.user?.id === currentUserId
+        ) {
+          this.errorMessage =
+            error instanceof Error ? error.message : "Failed to load notifications";
+        }
+        return false;
       } finally {
-        this.loading = false;
-        this.refreshing = false;
+        if (this.requestSequence === requestSequence) {
+          this.loading = false;
+          this.refreshing = false;
+        }
       }
     },
 
-    async refreshNotifications() {
-      await this.fetchNotifications(this.lastFilters, {
-        force: true,
-        silent: true,
-      });
-    },
-
-    clearCache() {
-      const appCache = useAppCacheStore();
-
-      appCache.forgetByPrefix("notifications:");
-    },
-
-    async invalidateAndRefresh() {
-      this.clearCache();
-
-      await this.fetchNotifications(this.lastFilters, {
-        force: true,
-        silent: true,
-      });
-    },
-
-    markLocalAsRead(notificationId: number) {
-      this.notifications = this.notifications.map((item) => {
-        if (item.id !== notificationId) return item;
-
-        return {
-          ...item,
-          read: true,
-          read_at: item.read_at || new Date().toISOString(),
-        };
-      });
-
-      this.unreadCount = Math.max(this.unreadCount - 1, 0);
-    },
-
-    markAllLocalAsRead() {
-      this.notifications = this.notifications.map((item) => ({
-        ...item,
-        read: true,
-        read_at: item.read_at || new Date().toISOString(),
-      }));
-
-      this.unreadCount = 0;
-    },
-
     clearLocalNotifications() {
+      this.requestSequence += 1;
       this.notifications = [];
       this.pagination = defaultPagination();
       this.unreadCount = 0;
+      this.loading = false;
+      this.refreshing = false;
+      this.errorMessage = "";
     },
 
     resetState() {
+      this.requestSequence += 1;
       this.notifications = [];
       this.pagination = defaultPagination();
       this.unreadCount = 0;
+      this.notificationUserId = null;
       this.loading = false;
       this.refreshing = false;
       this.errorMessage = "";

@@ -44,7 +44,12 @@ const handleLogin = async () => {
       typeof requestedRedirect === "string" &&
       (/^\/products\/[^/]+$/.test(requestedRedirect) ||
         requestedRedirect === "/app/cart" ||
-        requestedRedirect === "/app/checkout")
+        requestedRedirect === "/app/checkout" ||
+        requestedRedirect === "/app/orders" ||
+        requestedRedirect === "/app/shipments" ||
+        requestedRedirect === "/app/payments" ||
+        requestedRedirect === "/app/wishlist" ||
+        requestedRedirect === "/app/notifications")
         ? requestedRedirect
         : null;
     const customerReturnPath =

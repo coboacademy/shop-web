@@ -173,6 +173,8 @@ In debug mode, the response may contain the exception message.
 - A vendor profile must already exist. This endpoint does not create one.
 - Profiles with `approved` status cannot be updated; other statuses proceed through the update operation.
 - On update, KYC fields are replaced, status is reset to `pending`, and `verified_at` is cleared.
+- If the prior status was not `pending`, the transition into pending review sends the vendor a `Vendor account pending review` notification. Updating a profile that was already pending does not generate another vendor status notification.
+- Eligible administrators continue to receive the existing `Vendor KYC submitted` notification after a successful KYC update.
 - If `business_name` changes, the service generates a new unique slug.
 - The update is wrapped in a database transaction.
 - No endpoint-specific throttling is defined on the route.

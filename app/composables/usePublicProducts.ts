@@ -104,12 +104,13 @@ export interface PublicProductQuestion {
     id: number;
     name: string;
   };
-  answered_by: {
+  answered_by?: {
     id: number;
     name: string;
   } | null;
   answered_at: string | null;
   created_at: string;
+  updated_at?: string;
 }
 
 interface ApiResponse<T> {
@@ -201,10 +202,25 @@ export const usePublicProducts = () => {
     }
   };
 
+  const createProductQuestion = async (payload: {
+    product_id: string;
+    question: string;
+  }) => {
+    try {
+      const response = await api.post<
+        ApiResponse<{ question: PublicProductQuestion }>
+      >("/questions", payload);
+      return response.data;
+    } catch (error: unknown) {
+      throw normalizeError(error, "Failed to submit your question.");
+    }
+  };
+
   return {
     getProducts,
     getProduct,
     getProductReviews,
     getProductQuestions,
+    createProductQuestion,
   };
 };

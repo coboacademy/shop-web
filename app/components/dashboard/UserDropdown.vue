@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { LogOut, Settings, User } from "lucide-vue-next";
+import { useNotificationPageStore } from "~/stores/system/notificationPageStore";
 
 const authStore = useAuthStore();
 const auth = useAuth();
@@ -53,10 +54,12 @@ onBeforeUnmount(() => {
 
 const handleLogout = async () => {
   const notificationStore = useNotificationStore();
+  const notificationPageStore = useNotificationPageStore();
 
   await auth.logout();
 
   notificationStore.clearLocal();
+  notificationPageStore.resetState();
 
   open.value = false;
   await navigateTo("/login");

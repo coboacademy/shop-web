@@ -162,7 +162,8 @@ In debug mode, the response may contain the exception message.
 
 - The endpoint requires authentication but does not declare a vendor-role middleware; the request is associated with the authenticated user.
 - With no existing vendor profile, the service creates a vendor profile with a generated unique slug and `pending` status.
-- If an existing profile is `rejected`, the submitted KYC values update it, its status becomes `pending`, and `verified_at` is cleared. The controller still returns `201 Created`.
+- A new profile entering `pending` review generates a `Vendor account pending review` notification for the vendor and a `Vendor KYC submitted` notification for eligible administrators.
+- If an existing profile is `rejected`, the submitted KYC values update it, its status becomes `pending`, and `verified_at` is cleared. The controller still returns `201 Created`; both the vendor and eligible administrators receive their respective pending-review notifications.
 - If an existing profile is in any other status, submission fails with a runtime exception that currently becomes a generic `500` response.
 - KYC persistence is wrapped in a database transaction.
 - No endpoint-specific throttling is defined on the route.

@@ -18,6 +18,8 @@ Administrative endpoint documentation is grouped here by feature:
 - [`countries/`](./countries/)
 - [`dashboard/`](./dashboard/)
 - [`menus/`](./menus/)
+- [`notifications/`](./notifications/) — shared notification inbox and
+  currently implemented admin-related notification events.
 - [`permissions/`](./permissions/)
 - [`rbac/`](./rbac/)
 - [`roles/`](./roles/)

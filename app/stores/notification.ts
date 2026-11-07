@@ -1,18 +1,28 @@
-import { defineStore } from 'pinia'
+import { defineStore } from "pinia";
 import type {
   NotificationItem,
   NotificationPagination,
-} from '~/composables/useNotification'
+} from "~/composables/useNotification";
 
-export const useNotificationStore = defineStore('notification', {
+const emptyPagination = (): NotificationPagination => ({
+  current_page: 1,
+  last_page: 1,
+  per_page: 10,
+  total: 0,
+});
+
+export const useNotificationStore = defineStore("notification", {
   state: () => ({
     notifications: [] as NotificationItem[],
     unreadCount: 0,
-    pagination: null as NotificationPagination | null,
+    pagination: emptyPagination(),
+    notificationUserId: null as number | null,
+    requestSequence: 0,
+    actionSequence: 0,
     loading: false,
     actionLoading: false,
     initialized: false,
-    error: '',
+    error: "",
   }),
 
   getters: {
@@ -21,108 +31,176 @@ export const useNotificationStore = defineStore('notification', {
   },
 
   actions: {
+    resetForUser(userId: number | null) {
+      this.requestSequence += 1;
+      this.actionSequence += 1;
+      this.notifications = [];
+      this.unreadCount = 0;
+      this.pagination = emptyPagination();
+      this.notificationUserId = userId;
+      this.loading = false;
+      this.actionLoading = false;
+      this.initialized = false;
+      this.error = "";
+    },
+
+    syncFromPageData(
+      notifications: NotificationItem[],
+      pagination: NotificationPagination,
+      unreadCount: number,
+      userId: number,
+    ) {
+      const authStore = useAuthStore();
+      if (authStore.user?.id !== userId) return;
+
+      if (this.notificationUserId !== userId) this.resetForUser(userId);
+      this.notifications = notifications;
+      this.pagination = pagination;
+      this.unreadCount = unreadCount;
+      this.initialized = true;
+      this.error = "";
+    },
+
+    setUnreadCount(unreadCount: number, userId: number) {
+      const authStore = useAuthStore();
+      if (authStore.user?.id !== userId) return;
+
+      if (this.notificationUserId !== userId) this.resetForUser(userId);
+      this.unreadCount = unreadCount;
+    },
+
     async fetchNotifications(force = false) {
-      if (this.loading) return
+      const authStore = useAuthStore();
+      const currentUserId = authStore.user?.id ?? null;
 
-      if (this.initialized && !force) return
+      if (this.notificationUserId !== currentUserId) {
+        this.resetForUser(currentUserId);
+      }
 
-      this.loading = true
-      this.error = ''
+      if (this.loading || (this.initialized && !force)) return;
+
+      const requestSequence = ++this.requestSequence;
+      this.loading = true;
+      this.error = "";
 
       try {
-        const { getNotifications } = useNotification()
+        const { getNotifications } = useNotification();
+        const response = await getNotifications({ page: 1, per_page: 10 });
 
-        const response = await getNotifications({
-          page: 1,
-          per_page: 10,
-        })
-
-        this.notifications = response.data.notifications || []
-        this.unreadCount = response.data.unread_count || 0
-        this.pagination = response.data.pagination || null
-        this.initialized = true
-      } catch (error: any) {
-        this.error = error.message || 'Failed to load notifications'
+        if (
+          this.requestSequence === requestSequence &&
+          authStore.user?.id === currentUserId
+        ) {
+          this.notifications = response.data.notifications;
+          this.unreadCount = response.data.unread_count;
+          this.pagination = response.data.pagination;
+          this.initialized = true;
+        }
+      } catch (error: unknown) {
+        if (
+          this.requestSequence === requestSequence &&
+          authStore.user?.id === currentUserId
+        ) {
+          this.error =
+            error instanceof Error ? error.message : "Failed to load notifications";
+        }
       } finally {
-        this.loading = false
+        if (this.requestSequence === requestSequence) this.loading = false;
       }
     },
 
     async refreshNotifications() {
-      await this.fetchNotifications(true)
+      await this.fetchNotifications(true);
     },
 
     async markAsRead(id: number) {
-      this.actionLoading = true
+      if (this.actionLoading) throw new Error("A notification action is already running.");
+
+      const authStore = useAuthStore();
+      const currentUserId = authStore.user?.id ?? null;
+      const actionSequence = ++this.actionSequence;
+      this.actionLoading = true;
 
       try {
-        const { markNotificationAsRead } = useNotification()
-        const response = await markNotificationAsRead(id)
+        const { markNotificationAsRead } = useNotification();
+        const response = await markNotificationAsRead(id);
 
-        const updatedNotification = response.data.notification
-
-        if (updatedNotification) {
+        if (
+          this.actionSequence === actionSequence &&
+          authStore.user?.id === currentUserId
+        ) {
           this.notifications = this.notifications.map((item) =>
-            item.id === updatedNotification.id ? updatedNotification : item
-          )
-        } else {
-          this.notifications = this.notifications.map((item) =>
-            item.id === id ? { ...item, read: true } : item
-          )
+            item.id === response.data.notification.id
+              ? response.data.notification
+              : item,
+          );
+          this.unreadCount = response.data.unread_count;
         }
 
-        this.unreadCount = response.data.unread_count || 0
+        return response;
       } finally {
-        this.actionLoading = false
+        if (this.actionSequence === actionSequence) this.actionLoading = false;
       }
     },
 
     async markAllAsRead() {
-      if (!this.notifications.length) return
+      if (this.actionLoading) throw new Error("A notification action is already running.");
 
-      this.actionLoading = true
+      const authStore = useAuthStore();
+      const currentUserId = authStore.user?.id ?? null;
+      const actionSequence = ++this.actionSequence;
+      this.actionLoading = true;
 
       try {
-        const { markAllNotificationsAsRead } = useNotification()
-        const response = await markAllNotificationsAsRead()
+        const { markAllNotificationsAsRead } = useNotification();
+        const response = await markAllNotificationsAsRead();
 
-        this.notifications = this.notifications.map((item) => ({
-          ...item,
-          read: true,
-          read_at: item.read_at || new Date().toISOString(),
-        }))
+        if (
+          this.actionSequence === actionSequence &&
+          authStore.user?.id === currentUserId
+        ) {
+          this.notifications = this.notifications.map((item) => ({
+            ...item,
+            read: true,
+          }));
+          this.unreadCount = response.data.unread_count;
+        }
 
-        this.unreadCount = response.data.unread_count || 0
+        return response;
       } finally {
-        this.actionLoading = false
+        if (this.actionSequence === actionSequence) this.actionLoading = false;
       }
     },
 
     async clearAll() {
-      if (!this.notifications.length) return
+      if (this.actionLoading) throw new Error("A notification action is already running.");
 
-      this.actionLoading = true
+      const authStore = useAuthStore();
+      const currentUserId = authStore.user?.id ?? null;
+      const actionSequence = ++this.actionSequence;
+      this.actionLoading = true;
 
       try {
-        const { clearNotifications } = useNotification()
-        const response = await clearNotifications()
+        const { clearNotifications } = useNotification();
+        const response = await clearNotifications();
 
-        this.notifications = []
-        this.unreadCount = response.data.unread_count || 0
-        this.pagination = null
+        if (
+          this.actionSequence === actionSequence &&
+          authStore.user?.id === currentUserId
+        ) {
+          this.notifications = [];
+          this.unreadCount = response.data.unread_count;
+          this.pagination = emptyPagination();
+        }
+
+        return response;
       } finally {
-        this.actionLoading = false
+        if (this.actionSequence === actionSequence) this.actionLoading = false;
       }
     },
 
     clearLocal() {
-      this.notifications = []
-      this.unreadCount = 0
-      this.pagination = null
-      this.loading = false
-      this.actionLoading = false
-      this.initialized = false
-      this.error = ''
+      this.resetForUser(null);
     },
   },
-})
+});

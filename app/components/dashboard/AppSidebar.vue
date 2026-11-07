@@ -84,6 +84,20 @@ const visibleNavigation = computed<MenuItem[]>(() => {
     });
   }
 
+  if (isVendor && !navigation.some((item) => item.route === "/vendor/notifications")) {
+    navigation.push({
+      id: -5,
+      name: "bell",
+      label: "Notifications",
+      icon: "Bell",
+      route: "/vendor/notifications",
+      group: "Account",
+      sort_order: 996,
+      is_active: true,
+      is_system: true,
+    });
+  }
+
   return navigation;
 });
 

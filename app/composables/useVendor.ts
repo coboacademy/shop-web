@@ -1,3 +1,5 @@
+export type VendorReviewStatus = "pending" | "approved" | "rejected" | "suspended"
+
 export interface VendorProfile {
   id: string
   user_id?: number | string
@@ -13,7 +15,7 @@ export interface VendorProfile {
   address?: string | null
   logo?: string | null
   cover_image?: string | null
-  status?: string
+  status?: VendorReviewStatus | string
   verified_at?: string | null
   created_at?: string
 }
@@ -186,6 +188,17 @@ export interface VendorProfileUpdatePayload {
   address: string | null
 }
 
+export interface VendorKycPayload {
+  business_name: string
+  phone: string
+  description?: string | null
+  website?: string | null
+  country: string
+  province: string
+  city: string
+  address: string
+}
+
 export const useVendor = () => {
   const api = useApi()
 
@@ -327,6 +340,36 @@ export const useVendor = () => {
     } catch (error: any) {
       throw {
         message: error.response?.data?.message || 'Failed to fetch vendor profile',
+        errors: error.response?.data?.errors || {},
+        status: error.response?.status || 500,
+      }
+    }
+  }
+
+  const submitKyc = async (
+    payload: VendorKycPayload
+  ): Promise<VendorProfileResponse> => {
+    try {
+      const response = await api.post<VendorProfileResponse>('/vendor/kyc', payload)
+      return response.data
+    } catch (error: any) {
+      throw {
+        message: error.response?.data?.message || 'Failed to submit vendor KYC',
+        errors: error.response?.data?.errors || {},
+        status: error.response?.status || 500,
+      }
+    }
+  }
+
+  const updateKyc = async (
+    payload: VendorKycPayload
+  ): Promise<VendorProfileResponse> => {
+    try {
+      const response = await api.put<VendorProfileResponse>('/vendor/kyc', payload)
+      return response.data
+    } catch (error: any) {
+      throw {
+        message: error.response?.data?.message || 'Failed to update vendor KYC',
         errors: error.response?.data?.errors || {},
         status: error.response?.status || 500,
       }
@@ -509,6 +552,8 @@ export const useVendor = () => {
     suspendAdminVendor,
     reactivateAdminVendor,
     getProfile,
+    submitKyc,
+    updateKyc,
     updateProfile,
     createStore,
     getStore,

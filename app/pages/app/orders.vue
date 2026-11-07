@@ -1,5 +1,23 @@
 <script setup lang="ts">
-import { Eye, Package, RefreshCcw, Search, ShoppingBag } from "lucide-vue-next";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Clock3,
+  CreditCard,
+  Eye,
+  MapPin,
+  Package,
+  RefreshCw,
+  Search,
+  ShoppingBag,
+  Truck,
+} from "lucide-vue-next";
+import {
+  useUserOrder,
+  type UserOrder,
+  type UserOrderApiError,
+  type UserOrderListItem,
+} from "~/composables/useUserOrder";
 
 definePageMeta({
   layout: "user",
@@ -8,100 +26,241 @@ definePageMeta({
   title: "My Orders",
 });
 
-interface OrderItem {
-  id: number;
-  order_number: string;
-  status: "pending" | "processing" | "completed" | "cancelled";
-  total: number;
-  created_at: string;
-}
+const ORDERS_PER_PAGE = 15;
+type BadgeVariant = "default" | "success" | "danger" | "warning" | "info";
 
-const loading = ref(false);
+const { getOrders, getOrder } = useUserOrder();
+const orders = ref<UserOrderListItem[]>([]);
+const page = ref(1);
 const search = ref("");
-const status = ref("");
+const statusFilter = ref("");
+const loading = ref(true);
+const errorMessage = ref("");
+const isDetailOpen = ref(false);
+const detailLoading = ref(false);
+const detailError = ref("");
+const selectedOrder = ref<UserOrder | null>(null);
+const selectedOrderId = ref<number | null>(null);
 
-const orders = ref<OrderItem[]>([
-  {
-    id: 1,
-    order_number: "ORD-0001",
-    status: "pending",
-    total: 25.5,
-    created_at: "2026-01-01 10:00",
-  },
-  {
-    id: 2,
-    order_number: "ORD-0002",
-    status: "completed",
-    total: 49.99,
-    created_at: "2026-01-02 14:30",
-  },
-]);
+const isOrderApiError = (error: unknown): error is UserOrderApiError =>
+  typeof error === "object" &&
+  error !== null &&
+  "message" in error &&
+  typeof error.message === "string" &&
+  "status" in error &&
+  typeof error.status === "number" &&
+  "errors" in error;
 
-const filteredOrders = computed(() => {
-  const keyword = search.value.trim().toLowerCase();
-
+const visibleOrders = computed(() => {
+  const query = search.value.trim().toLowerCase();
   return orders.value.filter((order) => {
-    const matchesSearch = !keyword || order.order_number.toLowerCase().includes(keyword);
-
-    const matchesStatus = !status.value || order.status === status.value;
-
+    const matchesSearch =
+      !query || order.order_number.toLowerCase().includes(query);
+    const matchesStatus = !statusFilter.value || order.status === statusFilter.value;
     return matchesSearch && matchesStatus;
   });
 });
 
-const stats = computed(() => {
-  return {
-    total: orders.value.length,
-    pending: orders.value.filter((item) => item.status === "pending").length,
-    completed: orders.value.filter((item) => item.status === "completed").length,
-  };
-});
+const statusOptions = computed(() =>
+  [...new Set(orders.value.map((order) => order.status))]
+    .sort()
+    .map((value) => ({
+      label: value.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase()),
+      value,
+    })),
+);
+
+const pageStats = computed(() => ({
+  orders: orders.value.length,
+  pending: orders.value.filter((order) => order.status === "pending").length,
+  unpaid: orders.value.filter(
+    (order) => ["unpaid", "pending"].includes(order.payment_status.toLowerCase()),
+  ).length,
+}));
+
+const hasNextPage = computed(() => orders.value.length === ORDERS_PER_PAGE);
 
 const columns = [
   { key: "order", label: "Order" },
+  { key: "delivery", label: "Deliver to" },
+  { key: "payment", label: "Payment" },
   { key: "status", label: "Status" },
-  { key: "total", label: "Total" },
-  { key: "created_at", label: "Created" },
-  { key: "actions", label: "Actions", align: "right" as const },
+  { key: "total", label: "Total", align: "right" as const },
+  { key: "created_at", label: "Placed" },
+  { key: "actions", label: "", align: "right" as const },
 ];
 
-const handleRefresh = async () => {
+const formatLabel = (value: string) =>
+  value.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+
+const formatPrice = (value: string | number | null | undefined) => {
+  const amount = Number(value);
+  return Number.isFinite(amount)
+    ? new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+      }).format(amount)
+    : "—";
+};
+
+const formatDate = (value: string) => {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? value
+    : new Intl.DateTimeFormat(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(date);
+};
+
+const statusVariant = (status: string): BadgeVariant => {
+  switch (status.toLowerCase()) {
+    case "completed":
+    case "delivered":
+      return "success";
+    case "cancelled":
+    case "refunded":
+      return "danger";
+    case "processing":
+    case "confirmed":
+    case "shipped":
+      return "info";
+    case "pending":
+      return "warning";
+    default:
+      return "default";
+  }
+};
+
+const paymentVariant = (status: string): BadgeVariant => {
+  switch (status.toLowerCase()) {
+    case "paid":
+    case "completed":
+      return "success";
+    case "failed":
+    case "refunded":
+      return "danger";
+    case "pending":
+    case "unpaid":
+      return "warning";
+    default:
+      return "default";
+  }
+};
+
+const handleUnauthorized = async (error: unknown) => {
+  if (isOrderApiError(error) && error.status === 401) {
+    await navigateTo({
+      path: "/login",
+      query: { redirect: "/app/orders" },
+    });
+    return true;
+  }
+  return false;
+};
+
+const loadOrders = async (requestedPage = page.value) => {
   loading.value = true;
-
-  setTimeout(() => {
+  errorMessage.value = "";
+  try {
+    const response = await getOrders(requestedPage);
+    if (!Array.isArray(response.data.orders)) {
+      throw new Error("The orders API returned an invalid order list.");
+    }
+    orders.value = response.data.orders;
+    page.value = requestedPage;
+  } catch (error: unknown) {
+    if (await handleUnauthorized(error)) return;
+    errorMessage.value = isOrderApiError(error)
+      ? error.message
+      : error instanceof Error
+        ? error.message
+        : "Could not load your orders.";
+    orders.value = [];
+  } finally {
     loading.value = false;
-  }, 500);
+  }
 };
 
-const statusVariant = (value: OrderItem["status"]) => {
-  if (value === "completed") return "success";
-  if (value === "pending") return "warning";
-  if (value === "processing") return "info";
-  if (value === "cancelled") return "danger";
-
-  return "default";
+const openOrder = async (order: UserOrderListItem) => {
+  selectedOrderId.value = order.id;
+  selectedOrder.value = null;
+  isDetailOpen.value = true;
+  await loadOrderDetails(order.id);
 };
+
+const loadOrderDetails = async (orderId: number) => {
+  detailLoading.value = true;
+  detailError.value = "";
+  try {
+    const response = await getOrder(orderId);
+    selectedOrder.value = response.data.order;
+  } catch (error: unknown) {
+    if (await handleUnauthorized(error)) return;
+    detailError.value = isOrderApiError(error)
+      ? error.message
+      : error instanceof Error
+        ? error.message
+        : "Could not load order details.";
+  } finally {
+    detailLoading.value = false;
+  }
+};
+
+const closeDetails = () => {
+  isDetailOpen.value = false;
+  selectedOrder.value = null;
+  selectedOrderId.value = null;
+  detailError.value = "";
+};
+
+const changePage = async (nextPage: number) => {
+  if (loading.value || nextPage < 1 || nextPage === page.value) return;
+  await loadOrders(nextPage);
+};
+
+watch([search, statusFilter], () => {
+  if (page.value !== 1) void changePage(1);
+});
+
+onMounted(() => loadOrders(1));
 </script>
 
 <template>
   <div class="space-y-6">
     <PageHeader
-      title="My Orders"
-      subtitle="View your order history and current order status."
+      title="My orders"
+      subtitle="Track your purchases, payment status, and delivery details."
     >
       <template #actions>
-        <AppButton variant="secondary" :loading="loading" @click="handleRefresh">
-          <RefreshCcw class="h-4 w-4" />
+        <AppButton
+          variant="secondary"
+          :loading="loading"
+          :disabled="loading"
+          @click="loadOrders()"
+        >
+          <RefreshCw class="h-4 w-4" />
           Refresh
         </AppButton>
       </template>
     </PageHeader>
 
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    <AlertMessage v-if="errorMessage" type="error" :message="errorMessage">
+      <AppButton
+        variant="secondary"
+        size="sm"
+        :loading="loading"
+        @click="loadOrders()"
+      >
+        Try again
+      </AppButton>
+    </AlertMessage>
+
+    <div class="grid gap-4 sm:grid-cols-3">
       <StatsCard
-        title="Total Orders"
-        :value="stats.total"
-        subtitle="All orders"
+        title="Orders on this page"
+        :value="pageStats.orders"
+        subtitle="Up to 15 orders per page"
         tone="info"
       >
         <template #badge>
@@ -110,100 +269,299 @@ const statusVariant = (value: OrderItem["status"]) => {
           </AppBadge>
         </template>
       </StatsCard>
-
       <StatsCard
         title="Pending"
-        :value="stats.pending"
-        subtitle="Waiting process"
+        :value="pageStats.pending"
+        subtitle="On this page"
         tone="warning"
       >
         <template #badge>
           <AppBadge variant="warning" shape="square" size="md">
-            <Package class="h-5 w-5" />
+            <Clock3 class="h-5 w-5" />
           </AppBadge>
         </template>
       </StatsCard>
-
       <StatsCard
-        title="Completed"
-        :value="stats.completed"
-        subtitle="Finished orders"
-        tone="success"
+        title="Payment pending"
+        :value="pageStats.unpaid"
+        subtitle="On this page"
+        tone="default"
       >
         <template #badge>
-          <AppBadge variant="success" shape="square" size="md">
-            <Package class="h-5 w-5" />
+          <AppBadge variant="default" shape="square" size="md">
+            <CreditCard class="h-5 w-5" />
           </AppBadge>
         </template>
       </StatsCard>
     </div>
 
-    <FilterBar title="Filters" subtitle="Search and filter your orders.">
-      <AppInput v-model="search" label="Search" placeholder="Search order number...">
+    <FilterBar title="Find an order" subtitle="Search and filter the orders on this page.">
+      <AppInput
+        v-model="search"
+        label="Order number"
+        placeholder="Search order number..."
+      >
         <template #icon>
           <Search class="h-5 w-5" />
         </template>
       </AppInput>
 
       <AppSelect
-        v-model="status"
-        label="Status"
-        placeholder="All Status"
-        :options="[
-          { label: 'Pending', value: 'pending' },
-          { label: 'Processing', value: 'processing' },
-          { label: 'Completed', value: 'completed' },
-          { label: 'Cancelled', value: 'cancelled' },
-        ]"
+        v-model="statusFilter"
+        label="Order status"
+        placeholder="All statuses"
+        :options="statusOptions"
       />
+      <template #actions>
+        <button
+          v-if="search || statusFilter"
+          type="button"
+          class="rounded-xl px-3 py-2 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-card-foreground"
+          @click="search = ''; statusFilter = ''"
+        >
+          Clear filters
+        </button>
+      </template>
     </FilterBar>
+
+    <p
+      v-if="search || statusFilter"
+      class="text-sm text-muted-foreground"
+      aria-live="polite"
+    >
+      {{ visibleOrders.length }} matching
+      {{ visibleOrders.length === 1 ? "order" : "orders" }} on page {{ page }}.
+      Search and status filters apply to this page only.
+    </p>
 
     <DataTable
       :columns="columns"
-      :rows="filteredOrders"
+      :rows="visibleOrders"
       :loading="loading"
       empty-title="No orders found"
-      empty-message="Your orders will appear here."
+      :empty-message="
+        orders.length
+          ? 'No orders on this page match your filters.'
+          : page > 1
+            ? 'There are no more orders on this page.'
+            : 'Your orders will appear here after you place an order.'
+      "
     >
       <template #cell-order="{ row }">
         <div class="flex items-center gap-3">
           <AppBadge variant="info" shape="square" size="md">
             <Package class="h-5 w-5" />
           </AppBadge>
-
           <div>
-            <p class="text-sm font-bold text-card-foreground">
-              {{ row.order_number }}
-            </p>
-            <p class="text-xs text-muted-foreground">Order ID #{{ row.id }}</p>
+            <p class="font-bold text-card-foreground">{{ row.order_number }}</p>
+            <p class="text-xs text-muted-foreground">Order #{{ row.id }}</p>
           </div>
         </div>
       </template>
-
-      <template #cell-status="{ row }">
-        <AppBadge :variant="statusVariant(row.status)">
-          {{ row.status }}
+      <template #cell-delivery="{ row }">
+        <div class="max-w-48">
+          <p class="truncate font-semibold text-card-foreground">
+            {{ row.shipping?.name || "Recipient unavailable" }}
+          </p>
+          <p class="mt-1 flex items-center gap-1 truncate text-xs text-muted-foreground">
+            <MapPin class="h-3 w-3 shrink-0" />
+            {{ [row.shipping?.city, row.shipping?.country].filter(Boolean).join(", ") || "Address unavailable" }}
+          </p>
+        </div>
+      </template>
+      <template #cell-payment="{ row }">
+        <AppBadge :variant="paymentVariant(row.payment_status)">
+          {{ formatLabel(row.payment_status) }}
         </AppBadge>
       </template>
-
+      <template #cell-status="{ row }">
+        <AppBadge :variant="statusVariant(row.status)">
+          {{ formatLabel(row.status) }}
+        </AppBadge>
+      </template>
       <template #cell-total="{ row }">
-        <span class="text-sm font-bold text-card-foreground">
-          ${{ Number(row.total).toFixed(2) }}
+        <span class="font-bold text-card-foreground">
+          {{ formatPrice(row.total) }}
         </span>
       </template>
-
       <template #cell-created_at="{ row }">
-        <span class="text-sm text-muted-foreground">
-          {{ row.created_at }}
-        </span>
+        <span class="text-sm text-muted-foreground">{{ formatDate(row.created_at) }}</span>
       </template>
-
-      <template #cell-actions>
-        <AppButton variant="secondary" size="sm">
+      <template #cell-actions="{ row }">
+        <AppButton variant="secondary" size="sm" @click="openOrder(row)">
           <Eye class="h-4 w-4" />
-          View
+          Details
         </AppButton>
       </template>
     </DataTable>
+
+    <nav
+      class="flex flex-col gap-3 rounded-2xl border border-border bg-card px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+      aria-label="Order pages"
+    >
+      <p class="text-sm text-muted-foreground">
+        Page {{ page }} <span class="hidden sm:inline">· 15 orders per API page</span>
+      </p>
+      <div class="flex items-center justify-between gap-2 sm:justify-end">
+        <AppButton
+          variant="secondary"
+          size="sm"
+          :disabled="loading || page <= 1"
+          @click="changePage(page - 1)"
+        >
+          <ChevronLeft class="h-4 w-4" />
+          Previous
+        </AppButton>
+        <AppButton
+          variant="secondary"
+          size="sm"
+          :disabled="loading || !hasNextPage"
+          @click="changePage(page + 1)"
+        >
+          Next
+          <ChevronRight class="h-4 w-4" />
+        </AppButton>
+      </div>
+    </nav>
+    <p class="text-xs text-muted-foreground">
+      The orders API returns up to 15 records per page without total-count metadata.
+      Next is available when the current page is full.
+    </p>
+
+    <AppModal
+      :open="isDetailOpen"
+      :title="selectedOrder?.order_number || 'Order details'"
+      :subtitle="
+        selectedOrder
+          ? `Order #${selectedOrder.id} · Placed ${formatDate(selectedOrder.created_at)}`
+          : 'Loading order information'
+      "
+      size="lg"
+      @close="closeDetails"
+    >
+      <div v-if="detailLoading" class="space-y-4">
+        <div class="h-5 w-1/3 animate-pulse rounded bg-muted" />
+        <div class="h-24 animate-pulse rounded-2xl bg-muted" />
+        <div class="h-32 animate-pulse rounded-2xl bg-muted" />
+      </div>
+      <AlertMessage v-else-if="detailError" type="error" :message="detailError">
+        <AppButton
+          v-if="selectedOrderId"
+          variant="secondary"
+          size="sm"
+          @click="loadOrderDetails(selectedOrderId)"
+        >
+          Try again
+        </AppButton>
+      </AlertMessage>
+      <div v-else-if="selectedOrder" class="space-y-6">
+        <div class="grid gap-4 sm:grid-cols-2">
+          <section class="rounded-2xl border border-border bg-muted/30 p-4">
+            <h3 class="text-sm font-bold text-card-foreground">Order status</h3>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <AppBadge :variant="statusVariant(selectedOrder.status)">
+                {{ formatLabel(selectedOrder.status) }}
+              </AppBadge>
+              <AppBadge :variant="paymentVariant(selectedOrder.payment_status)">
+                {{ formatLabel(selectedOrder.payment_status) }}
+              </AppBadge>
+            </div>
+            <p class="mt-4 text-xs text-muted-foreground">
+              Last updated {{ formatDate(selectedOrder.updated_at) }}
+            </p>
+          </section>
+          <section class="rounded-2xl border border-border bg-muted/30 p-4">
+            <h3 class="flex items-center gap-2 text-sm font-bold text-card-foreground">
+              <Truck class="h-4 w-4" />
+              Shipping address
+            </h3>
+            <p class="mt-3 font-semibold text-card-foreground">
+              {{ selectedOrder.shipping.name }}
+            </p>
+            <p class="text-sm text-muted-foreground">{{ selectedOrder.shipping.phone }}</p>
+            <p class="mt-2 text-sm leading-5 text-muted-foreground">
+              {{ selectedOrder.shipping.address }}<br />
+              {{
+                [
+                  selectedOrder.shipping.city,
+                  selectedOrder.shipping.province,
+                  selectedOrder.shipping.postal_code,
+                ]
+                  .filter(Boolean)
+                  .join(", ")
+              }}<br />
+              {{ selectedOrder.shipping.country }}
+            </p>
+          </section>
+        </div>
+
+        <section>
+          <h3 class="mb-3 text-sm font-bold text-card-foreground">Items in this order</h3>
+          <div class="overflow-x-auto rounded-2xl border border-border">
+            <table class="min-w-full divide-y divide-border text-sm">
+              <thead class="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
+                <tr>
+                  <th class="px-4 py-3">Product</th>
+                  <th class="px-4 py-3">SKU</th>
+                  <th class="px-4 py-3 text-right">Qty</th>
+                  <th class="px-4 py-3 text-right">Unit price</th>
+                  <th class="px-4 py-3 text-right">Line total</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-border">
+                <tr v-for="item in selectedOrder.items" :key="item.id">
+                  <td class="px-4 py-3 font-medium text-card-foreground">
+                    {{ item.product_name }}
+                    <span
+                      v-if="item.variant_name"
+                      class="block text-xs text-muted-foreground"
+                    >
+                      {{ item.variant_name }}
+                    </span>
+                  </td>
+                  <td class="px-4 py-3 text-muted-foreground">{{ item.sku || "—" }}</td>
+                  <td class="px-4 py-3 text-right text-card-foreground">{{ item.quantity }}</td>
+                  <td class="px-4 py-3 text-right text-card-foreground">
+                    {{ formatPrice(item.unit_price) }}
+                  </td>
+                  <td class="px-4 py-3 text-right font-semibold text-card-foreground">
+                    {{ formatPrice(item.total) }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <div
+          v-if="selectedOrder.customer_note"
+          class="rounded-2xl border border-border bg-muted/30 p-4"
+        >
+          <h3 class="text-sm font-bold text-card-foreground">Note for this order</h3>
+          <p class="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">
+            {{ selectedOrder.customer_note }}
+          </p>
+        </div>
+
+        <section class="ml-auto max-w-sm space-y-3 border-t border-border pt-4 text-sm">
+          <div class="flex justify-between gap-4">
+            <span class="text-muted-foreground">Subtotal</span>
+            <span>{{ formatPrice(selectedOrder.subtotal) }}</span>
+          </div>
+          <div class="flex justify-between gap-4">
+            <span class="text-muted-foreground">Shipping</span>
+            <span>{{ formatPrice(selectedOrder.shipping_fee) }}</span>
+          </div>
+          <div class="flex justify-between gap-4">
+            <span class="text-muted-foreground">Discount</span>
+            <span>−{{ formatPrice(selectedOrder.discount) }}</span>
+          </div>
+          <div class="flex justify-between gap-4 border-t border-border pt-3 text-base font-bold text-card-foreground">
+            <span>Total</span>
+            <span>{{ formatPrice(selectedOrder.total) }}</span>
+          </div>
+        </section>
+      </div>
+    </AppModal>
   </div>
 </template>
