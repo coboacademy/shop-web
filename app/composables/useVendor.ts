@@ -63,6 +63,59 @@ export interface VendorProfileResponse {
   }
 }
 
+export interface VendorDashboardOrderItem {
+  id: number
+  product_id: string
+  variant_id: string | null
+  vendor_id: string
+  store_id: string
+  product_name: string
+  variant_name: string | null
+  sku: string
+  quantity: number
+  unit_price: string
+  subtotal: string
+  total: string
+}
+
+export interface VendorDashboardOrder {
+  id: number
+  order_number: string
+  status: "pending" | "confirmed" | "processing" | "delivered" | "cancelled"
+  payment_status: string
+  vendor_item_subtotal: string
+  items: VendorDashboardOrderItem[]
+  created_at: string
+}
+
+export interface VendorDashboardSummary {
+  orders: {
+    total: number
+    pending: number
+    confirmed: number
+    processing: number
+    delivered: number
+    cancelled: number
+  }
+  products: {
+    total: number
+    active: number
+  }
+  stores: {
+    total: number
+    active: number
+  }
+}
+
+export interface VendorDashboardSummaryResponse {
+  status: string
+  message: string
+  data: {
+    summary: VendorDashboardSummary
+    recent_orders: VendorDashboardOrder[]
+  }
+}
+
 export interface VendorPagination {
   current_page: number
   last_page: number
@@ -173,6 +226,7 @@ export interface StoreListResponse {
   message: string
   data: {
     stores: Store[]
+    pagination?: VendorPagination
   }
 }
 
@@ -346,6 +400,22 @@ export const useVendor = () => {
     }
   }
 
+  const getDashboardSummary = async (): Promise<VendorDashboardSummaryResponse> => {
+    try {
+      const response = await api.get<VendorDashboardSummaryResponse>(
+        '/vendor/dashboard/summary'
+      )
+      return response.data
+    } catch (error: any) {
+      throw {
+        message:
+          error.response?.data?.message || 'Failed to fetch vendor dashboard summary',
+        errors: error.response?.data?.errors || {},
+        status: error.response?.status || 500,
+      }
+    }
+  }
+
   const submitKyc = async (
     payload: VendorKycPayload
   ): Promise<VendorProfileResponse> => {
@@ -417,13 +487,46 @@ export const useVendor = () => {
     }
   }
 
-  const getStores = async (): Promise<StoreListResponse> => {
+  const getStores = async (page = 1): Promise<StoreListResponse> => {
     try {
-      const response = await api.get<StoreListResponse>('/vendor/stores')
-      return response.data
+      const response = await api.get<{
+        status: string
+        message: string
+        data: {
+          stores:
+            | Store[]
+            | {
+                data: Store[]
+                meta: VendorPagination
+              }
+        }
+      }>('/vendor/stores', { params: { page } })
+      const storeCollection = response.data.data?.stores
+
+      if (Array.isArray(storeCollection)) {
+        return {
+          ...response.data,
+          data: { stores: storeCollection },
+        }
+      }
+
+      if (!storeCollection || !Array.isArray(storeCollection.data)) {
+        throw new Error('The stores API returned an invalid store collection.')
+      }
+
+      return {
+        ...response.data,
+        data: {
+          stores: storeCollection.data,
+          pagination: storeCollection.meta,
+        },
+      }
     } catch (error: any) {
       throw {
-        message: error.response?.data?.message || 'Failed to fetch stores',
+        message:
+          error.response?.data?.message ||
+          error.message ||
+          'Failed to fetch stores',
         errors: error.response?.data?.errors || {},
         status: error.response?.status || 500,
       }
@@ -552,6 +655,7 @@ export const useVendor = () => {
     suspendAdminVendor,
     reactivateAdminVendor,
     getProfile,
+    getDashboardSummary,
     submitKyc,
     updateKyc,
     updateProfile,

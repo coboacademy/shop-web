@@ -338,15 +338,47 @@ export const useProduct = () => {
     params: { page?: number; per_page?: number } = {},
   ): Promise<ProductListResponse> => {
     try {
-      const response = await api.get<ProductListResponse>(
+      const response = await api.get<{
+        status: string;
+        message: string;
+        data: {
+          products:
+            | Product[]
+            | {
+                data: Product[];
+                meta?: ProductPagination;
+              };
+        };
+      }>(
         `/vendor/stores/${encodeURIComponent(storeId)}/products`,
         { params },
       );
 
-      return response.data;
+      const productCollection = response.data.data?.products;
+      if (Array.isArray(productCollection)) {
+        return {
+          ...response.data,
+          data: { products: productCollection },
+        };
+      }
+
+      if (!productCollection || !Array.isArray(productCollection.data)) {
+        throw new Error('The products API returned an invalid product collection.');
+      }
+
+      return {
+        ...response.data,
+        data: {
+          products: productCollection.data,
+          pagination: productCollection.meta,
+        },
+      };
     } catch (error: any) {
       throw {
-        message: error.response?.data?.message || "Failed to fetch products",
+        message:
+          error.response?.data?.message ||
+          error.message ||
+          "Failed to fetch products",
         errors: error.response?.data?.errors || {},
         status: error.response?.status || 500,
       };
