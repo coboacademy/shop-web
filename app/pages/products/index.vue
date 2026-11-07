@@ -12,6 +12,8 @@ definePageMeta({
 });
 
 const { getProducts } = usePublicProducts();
+const route = useRoute();
+const router = useRouter();
 const products = ref<PublicProduct[]>([]);
 const pagination = ref<PublicProductPagination | null>(null);
 const loading = ref(false);
@@ -26,6 +28,9 @@ const appliedFilters = reactive({
   min_price: undefined as number | undefined,
   max_price: undefined as number | undefined,
 });
+
+const searchQueryFromRoute = () =>
+  typeof route.query.search === "string" ? route.query.search.slice(0, 100) : "";
 
 const getErrorMessage = (error: unknown) =>
   typeof error === "object" &&
@@ -103,6 +108,9 @@ const applyFilters = async () => {
   // The documented repository ignores zero-valued bounds, so omit them.
   appliedFilters.min_price = minPrice || undefined;
   appliedFilters.max_price = maxPrice || undefined;
+  await router.replace({
+    query: { ...route.query, search: search || undefined },
+  });
   await loadProducts(1);
 };
 
@@ -114,6 +122,9 @@ const clearFilters = async () => {
   appliedFilters.min_price = undefined;
   appliedFilters.max_price = undefined;
   filterError.value = "";
+  await router.replace({
+    query: { ...route.query, search: undefined },
+  });
   await loadProducts(1);
 };
 
@@ -123,7 +134,24 @@ const changePage = async (page: number) => {
   await loadProducts(page);
 };
 
-onMounted(() => loadProducts());
+watch(
+  () => route.query.search,
+  (value) => {
+    const search = typeof value === "string" ? value.slice(0, 100) : "";
+    if (search === appliedFilters.search) return;
+
+    searchInput.value = search;
+    appliedFilters.search = search;
+    void loadProducts(1);
+  },
+);
+
+onMounted(() => {
+  const search = searchQueryFromRoute();
+  searchInput.value = search;
+  appliedFilters.search = search;
+  void loadProducts();
+});
 </script>
 
 <template>

@@ -2,6 +2,7 @@
 
 Vendor endpoint references are grouped by resource:
 
+- [`dashboard/`](./dashboard/) — [get the vendor dashboard summary](./dashboard/summary.md).
 - [`profile/`](./profile/) — [get](./profile/get-profile.md) and
   [update](./profile/update-profile.md) the vendor profile.
 - [`kyc/`](./kyc/) — [submit](./kyc/submit-kyc.md) and
