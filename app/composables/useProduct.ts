@@ -240,6 +240,16 @@ export interface ProductOptionValuePayload {
   sort_order?: number;
 }
 
+export interface ProductVariantInventory {
+  id: string;
+  quantity: number;
+  reserved_quantity: number | null;
+  available_quantity: number;
+  low_stock_threshold: number;
+  is_low_stock: boolean;
+  is_out_of_stock: boolean;
+}
+
 export interface ProductVariant {
   id: string;
   product_id: string;
@@ -249,7 +259,7 @@ export interface ProductVariant {
   is_active: boolean;
   sort_order: number;
   option_values: ProductVariantOptionValue[];
-  inventory: Record<string, unknown> | null;
+  inventory: ProductVariantInventory | null;
   created_at: string;
   updated_at: string;
 }
