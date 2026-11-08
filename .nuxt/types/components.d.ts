@@ -34,6 +34,9 @@ interface _GlobalComponents {
   AssignRolePermissionsModal: typeof import("../../app/components/roles/AssignRolePermissionsModal.vue")['default']
   CloneRoleModal: typeof import("../../app/components/roles/CloneRoleModal.vue")['default']
   ImportRoleModal: typeof import("../../app/components/roles/ImportRoleModal.vue")['default']
+  CustomerFooter: typeof import("../../app/components/storefront/CustomerFooter.vue")['default']
+  CustomerHeader: typeof import("../../app/components/storefront/CustomerHeader.vue")['default']
+  StorefrontProductCard: typeof import("../../app/components/storefront/StorefrontProductCard.vue")['default']
   DashboardPageMotion: typeof import("../../app/components/transition/DashboardPageMotion.vue")['default']
   MotionCard: typeof import("../../app/components/transition/MotionCard.vue")['default']
   ActionDropdown: typeof import("../../app/components/ui/ActionDropdown.vue")['default']
@@ -112,6 +115,9 @@ interface _GlobalComponents {
   LazyAssignRolePermissionsModal: LazyComponent<typeof import("../../app/components/roles/AssignRolePermissionsModal.vue")['default']>
   LazyCloneRoleModal: LazyComponent<typeof import("../../app/components/roles/CloneRoleModal.vue")['default']>
   LazyImportRoleModal: LazyComponent<typeof import("../../app/components/roles/ImportRoleModal.vue")['default']>
+  LazyCustomerFooter: LazyComponent<typeof import("../../app/components/storefront/CustomerFooter.vue")['default']>
+  LazyCustomerHeader: LazyComponent<typeof import("../../app/components/storefront/CustomerHeader.vue")['default']>
+  LazyStorefrontProductCard: LazyComponent<typeof import("../../app/components/storefront/StorefrontProductCard.vue")['default']>
   LazyDashboardPageMotion: LazyComponent<typeof import("../../app/components/transition/DashboardPageMotion.vue")['default']>
   LazyMotionCard: LazyComponent<typeof import("../../app/components/transition/MotionCard.vue")['default']>
   LazyActionDropdown: LazyComponent<typeof import("../../app/components/ui/ActionDropdown.vue")['default']>

@@ -34,6 +34,7 @@ declare global {
   const getCurrentInstance: typeof import('vue').getCurrentInstance
   const getCurrentScope: typeof import('vue').getCurrentScope
   const getRouteRules: typeof import('../../node_modules/nuxt/dist/app/composables/manifest').getRouteRules
+  const getStorefrontCategories: typeof import('../../app/utils/storefrontCatalog').getStorefrontCategories
   const h: typeof import('vue').h
   const hasInjectionContext: typeof import('vue').hasInjectionContext
   const inject: typeof import('vue').inject
@@ -46,6 +47,7 @@ declare global {
   const isReadonly: typeof import('vue').isReadonly
   const isRef: typeof import('vue').isRef
   const isShallow: typeof import('vue').isShallow
+  const isStorefrontSpecialOffer: typeof import('../../app/utils/storefrontCatalog').isStorefrontSpecialOffer
   const isVue2: typeof import('../../node_modules/nuxt/dist/app/compat/vue-demi').isVue2
   const isVue3: typeof import('../../node_modules/nuxt/dist/app/compat/vue-demi').isVue3
   const loadPayload: typeof import('../../node_modules/nuxt/dist/app/composables/payload').loadPayload
@@ -305,7 +307,7 @@ declare global {
   export type { UserShipmentStatus, UserShipmentItem, UserShipment, UserShipmentApiError } from '../../app/composables/useUserShipment'
   import('../../app/composables/useUserShipment')
   // @ts-ignore
-  export type { VendorReviewStatus, VendorProfile, AdminVendorUser, AdminVendorStatus, AdminVendorStore, AdminVendor, VendorProfileResponse, VendorPagination, AdminVendorListResponse, AdminVendorFilters, AdminVendorStatistics, AdminVendorStatisticsResponse, AdminVendorDetails, AdminVendorDetailsResponse, AdminVendorActionResponse, Store, CreateStorePayload, UpdateStorePayload, StoreResponse, StoreListResponse, VendorProfileUpdatePayload, VendorKycPayload } from '../../app/composables/useVendor'
+  export type { VendorReviewStatus, VendorProfile, AdminVendorUser, AdminVendorStatus, AdminVendorStore, AdminVendor, VendorProfileResponse, VendorDashboardOrderItem, VendorDashboardOrder, VendorDashboardSummary, VendorDashboardSummaryResponse, VendorPagination, AdminVendorListResponse, AdminVendorFilters, AdminVendorStatistics, AdminVendorStatisticsResponse, AdminVendorDetails, AdminVendorDetailsResponse, AdminVendorActionResponse, Store, CreateStorePayload, UpdateStorePayload, StoreResponse, StoreListResponse, VendorProfileUpdatePayload, VendorKycPayload } from '../../app/composables/useVendor'
   import('../../app/composables/useVendor')
   // @ts-ignore
   export type { VendorOrderStatus, VendorOrderItem, VendorOrderShipping, VendorOrder, VendorOrderPagination, VendorOrderListResponse, VendorOrderResponse } from '../../app/composables/useVendorOrder'
@@ -363,6 +365,7 @@ declare module 'vue' {
     readonly getCurrentInstance: UnwrapRef<typeof import('vue')['getCurrentInstance']>
     readonly getCurrentScope: UnwrapRef<typeof import('vue')['getCurrentScope']>
     readonly getRouteRules: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/manifest')['getRouteRules']>
+    readonly getStorefrontCategories: UnwrapRef<typeof import('../../app/utils/storefrontCatalog')['getStorefrontCategories']>
     readonly h: UnwrapRef<typeof import('vue')['h']>
     readonly hasInjectionContext: UnwrapRef<typeof import('vue')['hasInjectionContext']>
     readonly inject: UnwrapRef<typeof import('vue')['inject']>
@@ -375,6 +378,7 @@ declare module 'vue' {
     readonly isReadonly: UnwrapRef<typeof import('vue')['isReadonly']>
     readonly isRef: UnwrapRef<typeof import('vue')['isRef']>
     readonly isShallow: UnwrapRef<typeof import('vue')['isShallow']>
+    readonly isStorefrontSpecialOffer: UnwrapRef<typeof import('../../app/utils/storefrontCatalog')['isStorefrontSpecialOffer']>
     readonly isVue2: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/compat/vue-demi')['isVue2']>
     readonly isVue3: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/compat/vue-demi')['isVue3']>
     readonly loadPayload: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/payload')['loadPayload']>
