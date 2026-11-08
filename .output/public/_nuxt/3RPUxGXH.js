@@ -1,1 +1,0 @@
-import{am as a,L as r,A as e}from"./CbcNyN95.js";const u=a(t=>{const i=r();if(i.initialized||i.initAuth(),!i.isAuthenticated)return t.path.startsWith("/admin")?e("/admin/login"):t.path.startsWith("/vendor")?e("/vendor/login"):e({path:"/login",query:{redirect:t.fullPath}})});export{u as default};

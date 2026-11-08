@@ -142,6 +142,7 @@ const normalizeError = (error: unknown, fallback: string) => {
 
 export interface PublicProductFilters {
   search?: string;
+  category_id?: string;
   min_price?: number;
   max_price?: number;
   page?: number;

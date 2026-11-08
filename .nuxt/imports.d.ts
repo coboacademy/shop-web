@@ -59,12 +59,13 @@ export { useUser, UserStatus, UserItem, UserPagination, UserStats, UserListRespo
 export { useUserOrder, UserOrderListItem, UserOrder, UserOrderApiError } from '../app/composables/useUserOrder';
 export { useUserPayment, UserPaymentMethod, UserPayment, UserPaymentApiError } from '../app/composables/useUserPayment';
 export { useUserShipment, UserShipmentStatus, UserShipmentItem, UserShipment, UserShipmentApiError } from '../app/composables/useUserShipment';
-export { useVendor, VendorReviewStatus, VendorProfile, AdminVendorUser, AdminVendorStatus, AdminVendorStore, AdminVendor, VendorProfileResponse, VendorPagination, AdminVendorListResponse, AdminVendorFilters, AdminVendorStatistics, AdminVendorStatisticsResponse, AdminVendorDetails, AdminVendorDetailsResponse, AdminVendorActionResponse, Store, CreateStorePayload, UpdateStorePayload, StoreResponse, StoreListResponse, VendorProfileUpdatePayload, VendorKycPayload } from '../app/composables/useVendor';
+export { useVendor, VendorReviewStatus, VendorProfile, AdminVendorUser, AdminVendorStatus, AdminVendorStore, AdminVendor, VendorProfileResponse, VendorDashboardOrderItem, VendorDashboardOrder, VendorDashboardSummary, VendorDashboardSummaryResponse, VendorPagination, AdminVendorListResponse, AdminVendorFilters, AdminVendorStatistics, AdminVendorStatisticsResponse, AdminVendorDetails, AdminVendorDetailsResponse, AdminVendorActionResponse, Store, CreateStorePayload, UpdateStorePayload, StoreResponse, StoreListResponse, VendorProfileUpdatePayload, VendorKycPayload } from '../app/composables/useVendor';
 export { useVendorOrder, VendorOrderStatus, VendorOrderItem, VendorOrderShipping, VendorOrder, VendorOrderPagination, VendorOrderListResponse, VendorOrderResponse } from '../app/composables/useVendorOrder';
 export { useVendorQuestions, VendorProductQuestion, VendorQuestionPagination, VendorQuestionListResponse, AnswerProductQuestionResponse, VendorQuestionApiError } from '../app/composables/useVendorQuestions';
 export { useWishlist, WishlistProduct, WishlistItem, WishlistPagination, WishlistPage, WishlistApiError } from '../app/composables/useWishlist';
 export { makeCacheKey, isCacheFresh, CacheEntry } from '../app/utils/cache';
 export { downloadBlobFile } from '../app/utils/downloadFile';
+export { getStorefrontCategories, isStorefrontSpecialOffer } from '../app/utils/storefrontCatalog';
 export { useAppCacheStore } from '../app/stores/appCache';
 export { useAuthStore } from '../app/stores/auth';
 export { useCartStore } from '../app/stores/cart';

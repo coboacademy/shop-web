@@ -25,12 +25,16 @@ const minPriceInput = ref("");
 const maxPriceInput = ref("");
 const appliedFilters = reactive({
   search: "",
+  category_id: undefined as string | undefined,
   min_price: undefined as number | undefined,
   max_price: undefined as number | undefined,
 });
 
 const searchQueryFromRoute = () =>
   typeof route.query.search === "string" ? route.query.search.slice(0, 100) : "";
+
+const categoryIdFromRoute = () =>
+  typeof route.query.category_id === "string" ? route.query.category_id : undefined;
 
 const getErrorMessage = (error: unknown) =>
   typeof error === "object" &&
@@ -105,6 +109,7 @@ const applyFilters = async () => {
   }
 
   appliedFilters.search = search;
+  appliedFilters.category_id = categoryIdFromRoute();
   // The documented repository ignores zero-valued bounds, so omit them.
   appliedFilters.min_price = minPrice || undefined;
   appliedFilters.max_price = maxPrice || undefined;
@@ -119,11 +124,12 @@ const clearFilters = async () => {
   minPriceInput.value = "";
   maxPriceInput.value = "";
   appliedFilters.search = "";
+  appliedFilters.category_id = undefined;
   appliedFilters.min_price = undefined;
   appliedFilters.max_price = undefined;
   filterError.value = "";
   await router.replace({
-    query: { ...route.query, search: undefined },
+    query: { ...route.query, search: undefined, category_id: undefined },
   });
   await loadProducts(1);
 };
@@ -135,13 +141,21 @@ const changePage = async (page: number) => {
 };
 
 watch(
-  () => route.query.search,
-  (value) => {
-    const search = typeof value === "string" ? value.slice(0, 100) : "";
-    if (search === appliedFilters.search) return;
+  () => [route.query.search, route.query.category_id] as const,
+  ([searchValue, categoryValue]) => {
+    const search = typeof searchValue === "string" ? searchValue.slice(0, 100) : "";
+    const categoryId =
+      typeof categoryValue === "string" ? categoryValue : undefined;
+    if (
+      search === appliedFilters.search &&
+      categoryId === appliedFilters.category_id
+    ) {
+      return;
+    }
 
     searchInput.value = search;
     appliedFilters.search = search;
+    appliedFilters.category_id = categoryId;
     void loadProducts(1);
   },
 );
@@ -150,6 +164,7 @@ onMounted(() => {
   const search = searchQueryFromRoute();
   searchInput.value = search;
   appliedFilters.search = search;
+  appliedFilters.category_id = categoryIdFromRoute();
   void loadProducts();
 });
 </script>
@@ -235,6 +250,19 @@ onMounted(() => {
           </button>
         </div>
         <p v-if="filterError" class="mt-3 text-sm text-destructive" role="alert">{{ filterError }}</p>
+        <p
+          v-if="appliedFilters.category_id"
+          class="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground"
+        >
+          Category filter applied
+          <button
+            type="button"
+            class="font-semibold text-primary underline-offset-4 hover:underline"
+            @click="clearFilters"
+          >
+            Clear filters
+          </button>
+        </p>
       </form>
 
       <div v-if="errorMessage" class="rounded-2xl border border-destructive/30 bg-destructive/5 p-5 text-sm">

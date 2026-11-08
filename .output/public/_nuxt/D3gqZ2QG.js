@@ -1,1 +1,0 @@
-import{ag as t}from"./CbcNyN95.js";const r=t("rows-3",[["rect",{width:"18",height:"18",x:"3",y:"3",rx:"2",key:"afitv7"}],["path",{d:"M21 9H3",key:"1338ky"}],["path",{d:"M21 15H3",key:"9uk58r"}]]);export{r as R};

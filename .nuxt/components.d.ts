@@ -34,6 +34,9 @@ export const ImportPermissionModal: typeof import("../app/components/permissions
 export const AssignRolePermissionsModal: typeof import("../app/components/roles/AssignRolePermissionsModal.vue")['default']
 export const CloneRoleModal: typeof import("../app/components/roles/CloneRoleModal.vue")['default']
 export const ImportRoleModal: typeof import("../app/components/roles/ImportRoleModal.vue")['default']
+export const CustomerFooter: typeof import("../app/components/storefront/CustomerFooter.vue")['default']
+export const CustomerHeader: typeof import("../app/components/storefront/CustomerHeader.vue")['default']
+export const StorefrontProductCard: typeof import("../app/components/storefront/StorefrontProductCard.vue")['default']
 export const DashboardPageMotion: typeof import("../app/components/transition/DashboardPageMotion.vue")['default']
 export const MotionCard: typeof import("../app/components/transition/MotionCard.vue")['default']
 export const ActionDropdown: typeof import("../app/components/ui/ActionDropdown.vue")['default']
@@ -112,6 +115,9 @@ export const LazyImportPermissionModal: LazyComponent<typeof import("../app/comp
 export const LazyAssignRolePermissionsModal: LazyComponent<typeof import("../app/components/roles/AssignRolePermissionsModal.vue")['default']>
 export const LazyCloneRoleModal: LazyComponent<typeof import("../app/components/roles/CloneRoleModal.vue")['default']>
 export const LazyImportRoleModal: LazyComponent<typeof import("../app/components/roles/ImportRoleModal.vue")['default']>
+export const LazyCustomerFooter: LazyComponent<typeof import("../app/components/storefront/CustomerFooter.vue")['default']>
+export const LazyCustomerHeader: LazyComponent<typeof import("../app/components/storefront/CustomerHeader.vue")['default']>
+export const LazyStorefrontProductCard: LazyComponent<typeof import("../app/components/storefront/StorefrontProductCard.vue")['default']>
 export const LazyDashboardPageMotion: LazyComponent<typeof import("../app/components/transition/DashboardPageMotion.vue")['default']>
 export const LazyMotionCard: LazyComponent<typeof import("../app/components/transition/MotionCard.vue")['default']>
 export const LazyActionDropdown: LazyComponent<typeof import("../app/components/ui/ActionDropdown.vue")['default']>
