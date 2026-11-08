@@ -10,12 +10,12 @@ import {
   Pause,
   Trash2,
 } from "lucide-vue-next";
-import type { Product, ProductInventory } from "~/composables/useProduct";
+import type { Product } from "~/composables/useProduct";
+import type { ProductInventorySummary } from "~/utils/productInventorySummary";
+import InventorySummary from "./InventorySummary.vue";
 
 export interface ProductTableRow extends Product {
-  variant_count: number | null;
-  inventory: Pick<ProductInventory, "quantity" | "reserved_quantity" | "available_quantity"> | null;
-  stock_label: string;
+  inventory_summary: ProductInventorySummary | null;
 }
 
 const props = defineProps<{
@@ -36,13 +36,12 @@ const emit = defineEmits<{
 }>();
 
 const columns = [
-  { key: "product", label: "Product" },
-  { key: "sku", label: "SKU" },
+  { key: "product", label: "Product", width: "18rem" },
+  { key: "category", label: "Category" },
   { key: "price", label: "Price" },
-  { key: "stock", label: "Stock" },
-  { key: "variants", label: "Variants" },
+  { key: "inventory", label: "Inventory" },
   { key: "status", label: "Status" },
-  { key: "updated_at", label: "Updated" },
+  { key: "created_at", label: "Created" },
   { key: "actions", label: "Actions", align: "right" as const },
 ];
 
@@ -79,14 +78,16 @@ const formatDate = (value: string) => {
         </div>
         <div class="min-w-0">
           <p class="truncate font-semibold text-card-foreground">{{ row.name }}</p>
-          <p class="mt-1 max-w-64 truncate text-xs text-muted-foreground">
-            {{ row.categories?.length ? row.categories.map((category) => category.name).join(", ") : row.short_description || row.slug || "No description" }}
+          <p class="mt-1 truncate font-mono text-xs text-muted-foreground">
+            {{ row.sku || "No SKU" }}
           </p>
         </div>
       </div>
     </template>
-    <template #cell-sku="{ row }">
-      <span class="font-mono text-xs text-muted-foreground">{{ row.sku || "—" }}</span>
+    <template #cell-category="{ row }">
+      <span class="text-sm text-muted-foreground">
+        {{ row.categories?.length ? row.categories.map((category) => category.name).join(", ") : "Uncategorized" }}
+      </span>
     </template>
     <template #cell-price="{ row }">
       <div>
@@ -99,35 +100,15 @@ const formatDate = (value: string) => {
         </p>
       </div>
     </template>
-    <template #cell-stock="{ row }">
-      <div v-if="row.inventory">
-        <p class="text-sm font-semibold tabular-nums text-card-foreground">
-          {{ row.inventory.quantity }} total
-        </p>
-        <p class="mt-1 text-xs tabular-nums text-muted-foreground">
-          {{ row.inventory.available_quantity }} available ·
-          {{ row.inventory.reserved_quantity ?? 0 }} reserved
-        </p>
-      </div>
-      <span v-else class="text-sm text-muted-foreground">
-        {{ row.stock_label }}
-      </span>
-    </template>
-    <template #cell-variants="{ row }">
-      <span v-if="row.variant_count !== null" class="text-sm font-medium text-card-foreground">
-        {{ row.variant_count }}
-      </span>
-      <span v-else-if="row.stock_label === 'Loading…'" class="text-xs text-muted-foreground">
-        Loading…
-      </span>
-      <span v-else class="text-xs text-muted-foreground">—</span>
+    <template #cell-inventory="{ row }">
+      <InventorySummary :summary="row.inventory_summary" />
     </template>
     <template #cell-status="{ row }">
       <ProductStatusBadge :status="row.status" />
     </template>
-    <template #cell-updated_at="{ row }">
+    <template #cell-created_at="{ row }">
       <span class="text-xs text-muted-foreground">
-        {{ formatDate(row.updated_at || row.created_at) }}
+        {{ formatDate(row.created_at) }}
       </span>
     </template>
     <template #cell-actions="{ row }">

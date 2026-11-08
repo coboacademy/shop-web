@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { Box, Package, Plus, RefreshCcw, Store as StoreIcon } from "lucide-vue-next";
-import type { Product, ProductInventory, ProductPagination } from "~/composables/useProduct";
+import type { Product, ProductPagination } from "~/composables/useProduct";
+import {
+  getProductInventorySummary,
+  type ProductInventorySummary,
+} from "~/utils/productInventorySummary";
 import type { Store } from "~/composables/useVendor";
 
 definePageMeta({
@@ -25,16 +29,7 @@ const stores = ref<Store[]>([]);
 const selectedStoreId = ref("");
 const products = ref<Product[]>([]);
 const pagination = ref<ProductPagination | null>(null);
-const variantSummaries = ref<
-  Record<
-    string,
-    {
-      variantCount: number | null;
-      inventory: Pick<ProductInventory, "quantity" | "reserved_quantity" | "available_quantity"> | null;
-      stockLabel: string;
-    }
-  >
->({});
+const variantSummaries = ref<Record<string, ProductInventorySummary>>({});
 const summaryRequestId = ref(0);
 const page = ref(1);
 const perPage = ref(15);
@@ -71,9 +66,7 @@ const filteredProducts = computed(() => {
 const productRows = computed(() =>
   filteredProducts.value.map((product) => ({
     ...product,
-    variant_count: variantSummaries.value[product.id]?.variantCount ?? null,
-    inventory: variantSummaries.value[product.id]?.inventory ?? null,
-    stock_label: variantSummaries.value[product.id]?.stockLabel || "Loading…",
+    inventory_summary: variantSummaries.value[product.id] ?? null,
   })),
 );
 const productTotal = computed(() => pagination.value?.total);
@@ -110,45 +103,15 @@ const fetchVariantSummaries = async (productList: Product[], requestId: number) 
   const worker = async () => {
     while (index < productList.length) {
       const product = productList[index++];
-      const [variantsResult, inventoryResult] = await Promise.allSettled([
-        getStoreProductVariants(product.id),
-        getProductInventory(product.id),
-      ]);
+      const summary = await getProductInventorySummary(product.id, {
+        getStoreProductVariants,
+        getProductInventory,
+      });
       if (requestId !== summaryRequestId.value) return;
-
-      const variantCount =
-        variantsResult.status === "fulfilled"
-          ? variantsResult.value.data?.variants?.length ?? 0
-          : null;
-      const inventoryError =
-        inventoryResult.status === "rejected" ? inventoryResult.reason : null;
-      const isInventoryNotFound =
-        typeof inventoryError === "object" &&
-        inventoryError !== null &&
-        "status" in inventoryError &&
-        inventoryError.status === 404;
-      const inventory =
-        inventoryResult.status === "fulfilled"
-          ? inventoryResult.value.data?.inventory ?? null
-          : null;
-
-      const inventoryFailed =
-        inventoryResult.status === "rejected" && !isInventoryNotFound;
-      if (variantsResult.status === "rejected" || inventoryFailed) {
-        failed += 1;
-      }
-
+      if (summary.failed) failed += 1;
       variantSummaries.value = {
         ...variantSummaries.value,
-        [product.id]: {
-          variantCount,
-          inventory,
-          stockLabel: inventory
-            ? ""
-            : inventoryResult.status === "fulfilled" || isInventoryNotFound
-              ? "Not tracked"
-              : "Unavailable",
-        },
+        [product.id]: summary,
       };
     }
   };
