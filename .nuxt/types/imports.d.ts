@@ -33,6 +33,7 @@ declare global {
   const getAppManifest: typeof import('../../node_modules/nuxt/dist/app/composables/manifest').getAppManifest
   const getCurrentInstance: typeof import('vue').getCurrentInstance
   const getCurrentScope: typeof import('vue').getCurrentScope
+  const getProductInventorySummary: typeof import('../../app/utils/productInventorySummary').getProductInventorySummary
   const getRouteRules: typeof import('../../node_modules/nuxt/dist/app/composables/manifest').getRouteRules
   const getStorefrontCategories: typeof import('../../app/utils/storefrontCatalog').getStorefrontCategories
   const h: typeof import('vue').h
@@ -277,7 +278,7 @@ declare global {
   export type { PermissionItem, PermissionPagination, PermissionListResponse, PermissionPayload, PermissionQueryParams, PermissionStats } from '../../app/composables/usePermission'
   import('../../app/composables/usePermission')
   // @ts-ignore
-  export type { Product, ProductCategory, ProductCategoryTreeResponse, ProductCategorySyncResponse, ProductPagination, ProductListResponse, ProductResponse, ProductInventory, ProductInventoryResponse, ProductInventoryPayload, ProductStockChangePayload, ProductInventoryMovement, ProductInventoryMovementsResponse, VendorInventoryPagination, VendorInventoryListResponse, ProductImage, ProductImagesResponse, ProductImageResponse, ProductVariantOptionValue, ProductOption, ProductOptionsResponse, ProductOptionResponse, ProductOptionPayload, ProductOptionValueResponse, ProductOptionValuesResponse, ProductOptionValuePayload, ProductVariant, ProductVariantsResponse, ProductVariantResponse, ProductVariantPayload, ProductPayload } from '../../app/composables/useProduct'
+  export type { Product, ProductCategory, ProductCategoryTreeResponse, ProductCategorySyncResponse, ProductPagination, ProductListResponse, ProductResponse, ProductInventory, ProductInventoryResponse, ProductInventoryPayload, ProductStockChangePayload, ProductInventoryMovement, ProductInventoryMovementsResponse, VendorInventoryPagination, VendorInventoryListResponse, ProductImage, ProductImagesResponse, ProductImageResponse, ProductVariantOptionValue, ProductOption, ProductOptionsResponse, ProductOptionResponse, ProductOptionPayload, ProductOptionValueResponse, ProductOptionValuesResponse, ProductOptionValuePayload, ProductVariantInventory, ProductVariant, ProductVariantsResponse, ProductVariantResponse, ProductVariantPayload, ProductPayload } from '../../app/composables/useProduct'
   import('../../app/composables/useProduct')
   // @ts-ignore
   export type { ProfileUser, ProfileResponse, UpdateProfilePayload, UpdatePasswordPayload } from '../../app/composables/useProfile'
@@ -322,6 +323,9 @@ declare global {
   export type { CacheEntry } from '../../app/utils/cache'
   import('../../app/utils/cache')
   // @ts-ignore
+  export type { ProductInventorySummaryState, ProductInventorySummary } from '../../app/utils/productInventorySummary'
+  import('../../app/utils/productInventorySummary')
+  // @ts-ignore
   export type { ThemeMode } from '../../app/stores/theme'
   import('../../app/stores/theme')
   // @ts-ignore
@@ -364,6 +368,7 @@ declare module 'vue' {
     readonly getAppManifest: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/manifest')['getAppManifest']>
     readonly getCurrentInstance: UnwrapRef<typeof import('vue')['getCurrentInstance']>
     readonly getCurrentScope: UnwrapRef<typeof import('vue')['getCurrentScope']>
+    readonly getProductInventorySummary: UnwrapRef<typeof import('../../app/utils/productInventorySummary')['getProductInventorySummary']>
     readonly getRouteRules: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/composables/manifest')['getRouteRules']>
     readonly getStorefrontCategories: UnwrapRef<typeof import('../../app/utils/storefrontCatalog')['getStorefrontCategories']>
     readonly h: UnwrapRef<typeof import('vue')['h']>

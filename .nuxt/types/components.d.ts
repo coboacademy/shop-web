@@ -67,6 +67,7 @@ interface _GlobalComponents {
   EditUserModal: typeof import("../../app/components/users/EditUserModal.vue")['default']
   UserStatusBadge: typeof import("../../app/components/users/UserStatusBadge.vue")['default']
   EditStoreModal: typeof import("../../app/components/vendor/EditStoreModal.vue")['default']
+  InventorySummary: typeof import("../../app/components/vendor/products/InventorySummary.vue")['default']
   ProductFilters: typeof import("../../app/components/vendor/products/ProductFilters.vue")['default']
   ProductStats: typeof import("../../app/components/vendor/products/ProductStats.vue")['default']
   ProductStatusBadge: typeof import("../../app/components/vendor/products/ProductStatusBadge.vue")['default']
@@ -148,6 +149,7 @@ interface _GlobalComponents {
   LazyEditUserModal: LazyComponent<typeof import("../../app/components/users/EditUserModal.vue")['default']>
   LazyUserStatusBadge: LazyComponent<typeof import("../../app/components/users/UserStatusBadge.vue")['default']>
   LazyEditStoreModal: LazyComponent<typeof import("../../app/components/vendor/EditStoreModal.vue")['default']>
+  LazyInventorySummary: LazyComponent<typeof import("../../app/components/vendor/products/InventorySummary.vue")['default']>
   LazyProductFilters: LazyComponent<typeof import("../../app/components/vendor/products/ProductFilters.vue")['default']>
   LazyProductStats: LazyComponent<typeof import("../../app/components/vendor/products/ProductStats.vue")['default']>
   LazyProductStatusBadge: LazyComponent<typeof import("../../app/components/vendor/products/ProductStatusBadge.vue")['default']>
