@@ -67,6 +67,7 @@ export const DeleteUserModal: typeof import("../app/components/users/DeleteUserM
 export const EditUserModal: typeof import("../app/components/users/EditUserModal.vue")['default']
 export const UserStatusBadge: typeof import("../app/components/users/UserStatusBadge.vue")['default']
 export const EditStoreModal: typeof import("../app/components/vendor/EditStoreModal.vue")['default']
+export const InventorySummary: typeof import("../app/components/vendor/products/InventorySummary.vue")['default']
 export const ProductFilters: typeof import("../app/components/vendor/products/ProductFilters.vue")['default']
 export const ProductStats: typeof import("../app/components/vendor/products/ProductStats.vue")['default']
 export const ProductStatusBadge: typeof import("../app/components/vendor/products/ProductStatusBadge.vue")['default']
@@ -148,6 +149,7 @@ export const LazyDeleteUserModal: LazyComponent<typeof import("../app/components
 export const LazyEditUserModal: LazyComponent<typeof import("../app/components/users/EditUserModal.vue")['default']>
 export const LazyUserStatusBadge: LazyComponent<typeof import("../app/components/users/UserStatusBadge.vue")['default']>
 export const LazyEditStoreModal: LazyComponent<typeof import("../app/components/vendor/EditStoreModal.vue")['default']>
+export const LazyInventorySummary: LazyComponent<typeof import("../app/components/vendor/products/InventorySummary.vue")['default']>
 export const LazyProductFilters: LazyComponent<typeof import("../app/components/vendor/products/ProductFilters.vue")['default']>
 export const LazyProductStats: LazyComponent<typeof import("../app/components/vendor/products/ProductStats.vue")['default']>
 export const LazyProductStatusBadge: LazyComponent<typeof import("../app/components/vendor/products/ProductStatusBadge.vue")['default']>
