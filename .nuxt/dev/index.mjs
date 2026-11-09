@@ -648,7 +648,7 @@ const _inlineRuntimeConfig = {
     }
   },
   "public": {
-    "apiBase": "http://127.0.0.1:8000/api"
+    "apiBase": "https://shop-api.test/api"
   }
 };
 const envOptions = {
