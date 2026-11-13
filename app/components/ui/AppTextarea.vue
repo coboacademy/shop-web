@@ -6,6 +6,9 @@ withDefaults(
     placeholder?: string;
     error?: string;
     rows?: number;
+    disabled?: boolean;
+    required?: boolean;
+    maxlength?: number;
   }>(),
   {
     modelValue: "",
@@ -13,6 +16,8 @@ withDefaults(
     placeholder: "",
     error: "",
     rows: 4,
+    disabled: false,
+    required: false,
   }
 );
 
@@ -31,7 +36,12 @@ const emit = defineEmits<{
       :value="modelValue || ''"
       :placeholder="placeholder"
       :rows="rows"
-      class="w-full rounded-2xl border border-border bg-card px-4 py-3 text-sm text-card-foreground outline-none placeholder:text-muted-foreground focus:border-sky-500 focus:ring-4 focus:ring-sky-100 dark:focus:ring-sky-950"
+      :disabled="disabled"
+      :required="required"
+      :maxlength="maxlength"
+      :aria-invalid="!!error"
+      class="w-full rounded-2xl border bg-card px-4 py-3 text-sm text-card-foreground outline-none placeholder:text-muted-foreground focus:border-sky-500 focus:ring-4 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground dark:focus:ring-sky-950"
+      :class="error ? 'border-rose-500' : 'border-border'"
       @input="emit('update:modelValue', ($event.target as HTMLTextAreaElement).value)"
     />
 

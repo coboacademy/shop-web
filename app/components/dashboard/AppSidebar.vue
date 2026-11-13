@@ -25,14 +25,26 @@ const isActive = (href?: string | null) => {
 const visibleNavigation = computed<MenuItem[]>(() => {
   const menus = Array.isArray(menuStore.menus) ? menuStore.menus : [];
   const isVendor = authStore.hasRole("Vendor") || authStore.hasPermission("vendor.view");
+  const navigation = [...menus];
 
-  if (!isVendor || menus.some((item) => item.route === "/vendor/stores")) {
-    return menus;
+  if (
+    authStore.hasPermission("vendors.view") &&
+    !navigation.some((item) => item.route === "/admin/vendors")
+  ) {
+    navigation.push({
+      id: -2,
+      name: "store",
+      label: "Vendor Management",
+      route: "/admin/vendors",
+      group: "Management",
+      sort_order: 998,
+      is_active: true,
+      is_system: true,
+    });
   }
 
-  return [
-    ...menus,
-    {
+  if (isVendor && !navigation.some((item) => item.route === "/vendor/stores")) {
+    navigation.push({
       id: -1,
       name: "store",
       label: "Store Management",
@@ -41,8 +53,52 @@ const visibleNavigation = computed<MenuItem[]>(() => {
       sort_order: 999,
       is_active: true,
       is_system: true,
-    },
-  ];
+    });
+  }
+
+  if (isVendor && !navigation.some((item) => item.route === "/vendor/orders")) {
+    navigation.push({
+      id: -3,
+      name: "shopping-bag",
+      label: "Order Management",
+      icon: "ShoppingBag",
+      route: "/vendor/orders",
+      group: "Account",
+      sort_order: 998,
+      is_active: true,
+      is_system: true,
+    });
+  }
+
+  if (isVendor && !navigation.some((item) => item.route === "/vendor/questions")) {
+    navigation.push({
+      id: -4,
+      name: "message-circle",
+      label: "Product Q&A",
+      icon: "MessageCircle",
+      route: "/vendor/questions",
+      group: "Account",
+      sort_order: 997,
+      is_active: true,
+      is_system: true,
+    });
+  }
+
+  if (isVendor && !navigation.some((item) => item.route === "/vendor/notifications")) {
+    navigation.push({
+      id: -5,
+      name: "bell",
+      label: "Notifications",
+      icon: "Bell",
+      route: "/vendor/notifications",
+      group: "Account",
+      sort_order: 996,
+      is_active: true,
+      is_system: true,
+    });
+  }
+
+  return navigation;
 });
 
 const groupedNavigation = computed(() => {

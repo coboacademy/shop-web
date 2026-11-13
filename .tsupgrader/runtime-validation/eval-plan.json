@@ -1,0 +1,43 @@
+{
+  "projectType": "webapp",
+  "setup": [
+    {
+      "command": "npm",
+      "args": ["ci"]
+    }
+  ],
+  "assertions": [
+    {
+      "name": "production-build",
+      "kind": "process",
+      "command": "npm",
+      "args": ["run", "build"],
+      "verificationMethod": "exit-code",
+      "expected": "0",
+      "timeoutSeconds": 600
+    },
+    {
+      "name": "tests-pass",
+      "kind": "process",
+      "command": "npm",
+      "args": ["test"],
+      "verificationMethod": "test-results",
+      "expected": "0",
+      "timeoutSeconds": 300
+    },
+    {
+      "name": "homepage-serves",
+      "kind": "http-probe",
+      "startCommand": "npm",
+      "startArgs": ["run", "dev"],
+      "url": "http://127.0.0.1:3123/",
+      "verificationMethod": "http-status",
+      "expected": "200",
+      "timeoutSeconds": 120,
+      "env": {
+        "PORT": "3123",
+        "HOST": "127.0.0.1"
+      }
+    }
+  ]
+}

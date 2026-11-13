@@ -7,6 +7,8 @@ const props = withDefaults(
     placeholder?: string;
     error?: string;
     disabled?: boolean;
+    required?: boolean;
+    maxlength?: number;
   }>(),
   {
     label: "",
@@ -14,6 +16,7 @@ const props = withDefaults(
     placeholder: "",
     error: "",
     disabled: false,
+    required: false,
   }
 );
 
@@ -60,6 +63,8 @@ const inputClass = computed(() => {
         :type="type"
         :placeholder="placeholder"
         :disabled="disabled"
+        :required="required"
+        :maxlength="maxlength"
         :class="inputClass"
         @input="emit('update:modelValue', ($event.target as HTMLInputElement).value)"
       />

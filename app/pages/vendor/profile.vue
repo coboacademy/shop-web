@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import {
+  ArrowUpRight,
   Building2,
+  CheckCircle2,
   Globe,
   Mail,
   MapPin,
@@ -8,7 +10,9 @@ import {
   RefreshCcw,
   ShieldCheck,
   Store,
+  UserRound,
 } from "lucide-vue-next";
+import type { VendorProfile } from "~/composables/useVendor";
 
 definePageMeta({
   layout: "vendor",
@@ -17,17 +21,18 @@ definePageMeta({
   title: "Vendor Profile",
 });
 
-const { getProfile, updateKyc } = useVendor();
+const { getProfile, updateProfile } = useVendor();
 const toast = useToast();
 const authStore = useAuthStore();
 
 const loading = ref(false);
 const errorMessage = ref("");
-const vendor = ref<any>(null);
+const vendor = ref<VendorProfile | null>(null);
 const saving = ref(false);
 const editing = ref(false);
 const form = reactive({
   business_name: "",
+  email: "",
   phone: "",
   description: "",
   website: "",
@@ -49,7 +54,7 @@ const initials = computed(() => {
     .toUpperCase();
 });
 
-const statusVariant = computed(() => {
+const statusVariant = computed<"success" | "warning" | "default">(() => {
   const status = (vendor.value?.status || "pending").toLowerCase();
 
   if (status === "approved" || status === "active") return "success";
@@ -57,10 +62,16 @@ const statusVariant = computed(() => {
   return "default";
 });
 
-const fillForm = (profile: any) => {
-  Object.keys(form).forEach((key) => {
-    form[key as keyof typeof form] = profile?.[key] || "";
-  });
+const fillForm = (profile: VendorProfile) => {
+  form.business_name = profile.business_name || "";
+  form.email = profile.email || "";
+  form.phone = profile.phone || "";
+  form.description = profile.description || "";
+  form.website = profile.website || "";
+  form.country = profile.country || "";
+  form.province = profile.province || "";
+  form.city = profile.city || "";
+  form.address = profile.address || "";
 };
 
 const fetchProfile = async () => {
@@ -85,11 +96,21 @@ const handleUpdate = async () => {
   Object.keys(formErrors).forEach((key) => delete formErrors[key]);
 
   try {
-    const response = await updateKyc({ ...form });
+    const response = await updateProfile({
+      business_name: form.business_name.trim(),
+      email: form.email.trim(),
+      phone: form.phone.trim() || null,
+      description: form.description.trim() || null,
+      website: form.website.trim() || null,
+      country: form.country.trim() || null,
+      province: form.province.trim() || null,
+      city: form.city.trim() || null,
+      address: form.address.trim() || null,
+    });
     vendor.value = response.data.vendor;
     fillForm(vendor.value);
     editing.value = false;
-    toast.success("KYC updated", "Your vendor information was updated successfully.");
+    toast.success("Profile updated", response.message || "Your vendor profile was saved.");
   } catch (error: any) {
     const validationErrors = error.errors || {};
     Object.keys(validationErrors).forEach((key) => {
@@ -106,6 +127,11 @@ const detailRows = computed(() => [
     label: "Business name",
     value: vendor.value?.business_name || "-",
     icon: Store,
+  },
+  {
+    label: "Business description",
+    value: vendor.value?.description || "-",
+    icon: Building2,
   },
   {
     label: "Email",
@@ -137,6 +163,15 @@ const detailRows = computed(() => [
   },
 ]);
 
+const cancelEditing = () => {
+  if (vendor.value) fillForm(vendor.value);
+  Object.keys(formErrors).forEach((key) => delete formErrors[key]);
+  errorMessage.value = "";
+  editing.value = false;
+};
+
+const statusLabel = computed(() => vendor.value?.status || "Unknown");
+
 onMounted(async () => {
   await fetchProfile();
 });
@@ -153,8 +188,11 @@ onMounted(async () => {
           <RefreshCcw class="h-4 w-4" />
           Refresh
         </AppButton>
-        <AppButton v-if="vendor" variant="primary" @click="editing = !editing">
-          {{ editing ? "Cancel" : "Manage KYC" }}
+        <AppButton v-if="vendor && !editing" variant="primary" @click="editing = true">
+          Edit profile
+        </AppButton>
+        <AppButton v-if="editing" variant="secondary" :disabled="saving" @click="cancelEditing">
+          Cancel
         </AppButton>
       </template>
     </PageHeader>
@@ -167,7 +205,7 @@ onMounted(async () => {
     />
 
     <template v-if="loading">
-      <div class="grid gap-6 lg:grid-cols-3">
+      <div class="grid gap-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.8fr)]">
         <div class="rounded-3xl border border-border bg-card p-6 shadow-sm lg:col-span-1">
           <div class="mx-auto h-24 w-24 animate-pulse rounded-3xl bg-muted" />
           <div class="mx-auto mt-5 h-5 w-36 animate-pulse rounded-full bg-muted" />
@@ -186,68 +224,178 @@ onMounted(async () => {
 
     <template v-else>
       <div class="grid gap-6 lg:grid-cols-3">
-        <AppCard class="lg:col-span-1">
-          <div class="flex flex-col items-center text-center">
-            <div
-              class="flex h-24 w-24 items-center justify-center rounded-3xl bg-foreground text-3xl font-black text-background shadow-lg shadow-slate-900/10"
-            >
-              {{ initials }}
+        <AppCard class="overflow-hidden p-0">
+          <div class="relative h-32 bg-gradient-to-br from-slate-800 to-slate-600 dark:from-slate-900 dark:to-slate-700">
+            <img
+              v-if="vendor?.cover_image"
+              :src="vendor.cover_image"
+              alt="Vendor cover"
+              class="h-full w-full object-cover"
+            />
+            <div class="absolute inset-0 bg-gradient-to-t from-slate-950/55 to-transparent" />
+          </div>
+          <div class="px-6 pb-6">
+            <div class="-mt-12 flex items-end justify-between gap-3">
+              <div class="flex h-24 w-24 items-center justify-center overflow-hidden rounded-3xl border-4 border-card bg-foreground text-2xl font-black text-background shadow-lg">
+                <img
+                  v-if="vendor?.logo"
+                  :src="vendor.logo"
+                  :alt="`${vendor.business_name} logo`"
+                  class="h-full w-full object-cover"
+                />
+                <span v-else>{{ initials }}</span>
+              </div>
+              <AppBadge :variant="statusVariant" size="md" dot>
+                {{ statusLabel }}
+              </AppBadge>
             </div>
-
-            <h2 class="mt-5 text-xl font-bold text-card-foreground">
+            <h2 class="mt-4 text-xl font-bold text-card-foreground">
               {{ vendor?.business_name || "Vendor" }}
             </h2>
+            <a
+              v-if="vendor?.website"
+              :href="vendor.website"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="mt-1 inline-flex items-center gap-1 break-all text-sm text-blue-600 hover:underline dark:text-blue-400"
+            >
+              {{ vendor.website }}
+              <ArrowUpRight class="h-3.5 w-3.5 shrink-0" />
+            </a>
+            <p v-else class="mt-1 text-sm text-muted-foreground">Business profile</p>
 
-            <div class="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
-              <Mail class="h-4 w-4" />
-              <span class="max-w-[220px] truncate">
-                {{ vendor?.email || "-" }}
-              </span>
-            </div>
-
-            <div class="mt-5 flex flex-wrap justify-center gap-2">
-              <AppBadge :variant="statusVariant as any">
-                {{ (vendor?.status || "pending").toUpperCase() }}
-              </AppBadge>
-              <AppBadge variant="info">
-                <ShieldCheck class="mr-1 h-3.5 w-3.5" />
-                Vendor
-              </AppBadge>
+            <div class="mt-5 space-y-3 border-t border-border pt-5">
+              <p class="flex items-start gap-3 text-sm text-muted-foreground">
+                <Mail class="mt-0.5 h-4 w-4 shrink-0" />
+                <span class="break-all">{{ vendor?.email || "No email provided" }}</span>
+              </p>
+              <p class="flex items-start gap-3 text-sm text-muted-foreground">
+                <MapPin class="mt-0.5 h-4 w-4 shrink-0" />
+                <span>
+                  {{ [vendor?.city, vendor?.province, vendor?.country].filter(Boolean).join(", ") || "Location not provided" }}
+                </span>
+              </p>
+              <p v-if="vendor?.verified_at" class="flex items-center gap-3 text-sm text-emerald-700 dark:text-emerald-400">
+                <CheckCircle2 class="h-4 w-4 shrink-0" />
+                Verified {{ new Date(vendor.verified_at).toLocaleDateString() }}
+              </p>
+              <p v-else class="flex items-center gap-3 text-sm text-muted-foreground">
+                <ShieldCheck class="h-4 w-4 shrink-0" />
+                Not verified
+              </p>
+              <p v-if="vendor?.created_at" class="flex items-center gap-3 text-xs text-muted-foreground">
+                <UserRound class="h-4 w-4 shrink-0" />
+                Profile created {{ new Date(vendor.created_at).toLocaleDateString() }}
+              </p>
             </div>
           </div>
         </AppCard>
 
-        <AppCard class="lg:col-span-2" title="Business Information" subtitle="Current vendor details from the API.">
-          <form v-if="editing" class="space-y-5" @submit.prevent="handleUpdate">
-            <div class="grid gap-5 md:grid-cols-2">
-              <AuthInput v-model="form.business_name" label="Business name" :error="formErrors.business_name" required />
-              <AuthInput v-model="form.phone" label="Phone number" :error="formErrors.phone" required />
-              <AuthInput v-model="form.description" label="Description" :error="formErrors.description" />
-              <AuthInput v-model="form.website" label="Website" type="url" :error="formErrors.website" />
-              <AuthInput v-model="form.country" label="Country" :error="formErrors.country" required />
-              <AuthInput v-model="form.province" label="Province" :error="formErrors.province" required />
-              <AuthInput v-model="form.city" label="City" :error="formErrors.city" required />
-              <AuthInput v-model="form.address" label="Address" :error="formErrors.address" required />
-            </div>
-            <div class="flex justify-end border-t border-border pt-5">
-              <AppButton type="submit" variant="success" :loading="saving">
-                Save KYC
-              </AppButton>
-            </div>
+        <AppCard
+          class="lg:col-span-1"
+          title="Business information"
+          :subtitle="editing ? 'Update your vendor contact and business details.' : 'Details returned by your vendor profile.'"
+        >
+          <AlertMessage
+            v-if="errorMessage && editing"
+            class="mb-5"
+            type="error"
+            :message="errorMessage"
+          />
+          <form v-if="editing" @submit.prevent="handleUpdate">
+            <fieldset :disabled="saving" class="min-w-0 space-y-5">
+              <div class="grid gap-x-5 gap-y-4 sm:grid-cols-2">
+              <AppInput
+                v-model="form.business_name"
+                label="Business name"
+                placeholder="Your registered business name"
+                :maxlength="100"
+                :error="formErrors.business_name"
+                required
+              />
+              <AppInput
+                v-model="form.email"
+                label="Business email"
+                type="email"
+                placeholder="name@example.com"
+                :maxlength="255"
+                :error="formErrors.email"
+                required
+              />
+              <AppInput
+                v-model="form.phone"
+                label="Phone number"
+                type="tel"
+                placeholder="Optional"
+                :maxlength="30"
+                :error="formErrors.phone"
+              />
+              <AppInput
+                v-model="form.website"
+                label="Website"
+                type="url"
+                placeholder="https://example.com"
+                :maxlength="255"
+                :error="formErrors.website"
+              />
+              <AppTextarea
+                v-model="form.description"
+                class="sm:col-span-2"
+                label="Description"
+                placeholder="Tell customers about your business"
+                :maxlength="1000"
+                :error="formErrors.description"
+                :rows="4"
+              />
+              <AppInput
+                v-model="form.country"
+                label="Country"
+                placeholder="Optional"
+                :maxlength="100"
+                :error="formErrors.country"
+              />
+              <AppInput
+                v-model="form.province"
+                label="Province / region"
+                placeholder="Optional"
+                :maxlength="100"
+                :error="formErrors.province"
+              />
+              <AppInput
+                v-model="form.city"
+                label="City"
+                placeholder="Optional"
+                :maxlength="100"
+                :error="formErrors.city"
+              />
+              <AppInput
+                v-model="form.address"
+                label="Address"
+                placeholder="Optional"
+                :maxlength="255"
+                :error="formErrors.address"
+              />
+              </div>
+              <div class="flex justify-end border-t border-border pt-5">
+                <AppButton type="submit" variant="primary" :loading="saving">
+                  Save changes
+                </AppButton>
+              </div>
+            </fieldset>
           </form>
 
-          <div class="grid gap-5 md:grid-cols-2">
+          <div v-else class="grid gap-3 sm:grid-cols-2">
             <div
               v-for="row in detailRows"
               :key="row.label"
-              class="rounded-2xl border border-border bg-muted/40 p-4"
+              class="min-w-0 rounded-2xl border border-border bg-muted/30 p-4"
             >
               <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 <component :is="row.icon" class="h-4 w-4" />
                 {{ row.label }}
               </div>
 
-              <p class="mt-3 text-sm font-semibold text-card-foreground break-words">
+              <p class="mt-3 break-words text-sm font-semibold text-card-foreground">
                 {{ row.value }}
               </p>
             </div>

@@ -136,7 +136,7 @@ const logoUrl = computed(() => {
 });
 
 const coverUrl = computed(() => {
-  const cover = store.value?.cover_image;
+  const cover = store.value?.cover_image_url || store.value?.cover_image;
 
   if (!cover) return "";
 

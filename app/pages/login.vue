@@ -1,11 +1,12 @@
 <script setup lang="ts">
 definePageMeta({
-  layout: "public",
+  layout: "auth",
   middleware: "guest",
   title: "Login",
 });
 
 const authStore = useAuthStore();
+const route = useRoute();
 
 const form = reactive({
   email: "",
@@ -38,7 +39,29 @@ const handleLogin = async () => {
       return;
     }
 
-    await navigateTo(redirectTo || "/");
+    const requestedRedirect = route.query.redirect;
+    const allowedCustomerReturnPath =
+      typeof requestedRedirect === "string" &&
+      (/^\/products\/[^/]+$/.test(requestedRedirect) ||
+        requestedRedirect === "/app/cart" ||
+        requestedRedirect === "/app/checkout" ||
+        requestedRedirect === "/app/orders" ||
+        requestedRedirect === "/app/shipments" ||
+        requestedRedirect === "/app/payments" ||
+        requestedRedirect === "/app/wishlist" ||
+        requestedRedirect === "/app/notifications")
+        ? requestedRedirect
+        : null;
+    const customerReturnPath =
+      allowedCustomerReturnPath &&
+      authStore.hasPermission("account.view") &&
+      !authStore.hasPermission("dashboard.view") &&
+      !authStore.hasRole("Vendor") &&
+      !authStore.hasPermission("vendor.view")
+        ? allowedCustomerReturnPath
+        : null;
+
+    await navigateTo(customerReturnPath || redirectTo || "/");
   } catch (error: any) {
     generalError.value = error.message || "Login failed";
 

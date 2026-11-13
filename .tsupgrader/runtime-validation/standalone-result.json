@@ -1,0 +1,39 @@
+{
+  "planHash": "68c3f2889710fbfa6cdf62302cfb820a043f43185050496cbc75698c81d03cd1",
+  "phase": "standalone",
+  "recordedAtUtc": "2026-11-07T14:04:48.5672900Z",
+  "retryCount": 0,
+  "resetBaseline": false,
+  "complete": true,
+  "result": {
+    "setupSucceeded": false,
+    "setupDurationMs": 14765,
+    "setupFailureOutput": "setup step 0 \u0027npm\u0027 failed (exit=-4048, timedOut=False)\r\nnpm warn Unknown env config \u0022scripts-prepend-node-path\u0022. This will stop working in the next major version of npm.\r\nnpm error code EPERM\r\nnpm error syscall unlink\r\nnpm error path D:\\GIT\\github\\users\\coboacademy\\shop-web\\node_modules\\lightningcss-win32-x64-msvc\\lightningcss.win32-x64-msvc.node\r\nnpm error errno -4048\r\nnpm error [Error: EPERM: operation not permitted, unlink \u0027D:\\GIT\\github\\users\\coboacademy\\shop-web\\node_modules\\lightningcss-win32-x64-msvc\\lightningcss.win32-x64-msvc.node\u0027] {\r\nnpm error   errno: -4048,\r\nnpm error   code: \u0027EPERM\u0027,\r\nnpm error   syscall: \u0027unlink\u0027,\r\nnpm error   path: \u0027D:\\\\GIT\\\\github\\\\users\\\\coboacademy\\\\shop-web\\\\node_modules\\\\lightningcss-win32-x64-msvc\\\\lightningcss.win32-x64-msvc.node\u0027\r\nnpm error }\r\nnpm error\r\nnpm error The operation was rejected by your operating system.\r\nnpm error It\u0027s possible that the file was already in use (by a text editor or antivirus),\r\nnpm error or that you lack permissions to access it.\r\nnpm error\r\nnpm error If you believe this might be a permissions issue, please double-check the\r\nnpm error permissions of the file and its containing directories, or try running\r\nnpm error the command again as root/Administrator.\r\nnpm error A complete log of this run can be found in: C:\\Users\\Lenovo\\AppData\\Local\\npm-cache\\_logs\\2026-11-07T14_04_34_758Z-debug-0.log\r\n",
+    "assertions": [],
+    "executions": [
+      {
+        "source": "setup[0]",
+        "resolvedExecutable": "C:\\Program Files\\nodejs\\npm.cmd",
+        "args": [
+          "ci"
+        ],
+        "cwd": "D:\\GIT\\github\\users\\coboacademy\\shop-web",
+        "env": {},
+        "prependPath": [],
+        "platform": "win32",
+        "nodeExecutable": "C:\\Program Files\\nodejs\\node.EXE",
+        "nodeVersion": "v23.6.1",
+        "packageManager": "npm",
+        "packageManagerExecutable": "C:\\Program Files\\nodejs\\npm.cmd",
+        "packageManagerVersion": "11.5.2",
+        "cleanup": {
+          "RootProcessId": 6676,
+          "Completed": true,
+          "ProcessesObserved": 5,
+          "ProcessesTerminated": 1,
+          "Failure": null
+        }
+      }
+    ]
+  }
+}

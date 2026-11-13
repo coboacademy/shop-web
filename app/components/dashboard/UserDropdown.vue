@@ -1,10 +1,26 @@
 <script setup lang="ts">
 import { LogOut, Settings, User } from "lucide-vue-next";
+import { useNotificationPageStore } from "~/stores/system/notificationPageStore";
 
 const authStore = useAuthStore();
 const auth = useAuth();
+const route = useRoute();
 const open = ref(false);
 const dropdownRef = ref<HTMLElement | null>(null);
+
+const isVendorArea = computed(() => route.path.startsWith("/vendor/"));
+const profileLink = computed(() =>
+  isVendorArea.value ? "/vendor/profile" : "/app/profile",
+);
+const profileLabel = computed(() =>
+  isVendorArea.value ? "Vendor Profile" : "Profile",
+);
+const settingsLink = computed(() =>
+  isVendorArea.value ? "/app/settings" : "/admin/settings",
+);
+const settingsLabel = computed(() =>
+  isVendorArea.value ? "Account Settings" : "Settings",
+);
 
 const close = () => {
   open.value = false;
@@ -38,10 +54,12 @@ onBeforeUnmount(() => {
 
 const handleLogout = async () => {
   const notificationStore = useNotificationStore();
+  const notificationPageStore = useNotificationPageStore();
 
   await auth.logout();
 
   notificationStore.clearLocal();
+  notificationPageStore.resetState();
 
   open.value = false;
   await navigateTo("/login");
@@ -85,21 +103,21 @@ const handleLogout = async () => {
 
       <div class="py-2">
         <NuxtLink
-          to="/app/profile"
+          :to="profileLink"
           class="flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
           @click="close"
         >
           <User class="h-4 w-4" />
-          Profile
+          {{ profileLabel }}
         </NuxtLink>
 
         <NuxtLink
-          to="/admin/settings"
+          :to="settingsLink"
           class="flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
           @click="close"
         >
           <Settings class="h-4 w-4" />
-          Settings
+          {{ settingsLabel }}
         </NuxtLink>
 
         <button

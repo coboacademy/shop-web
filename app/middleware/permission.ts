@@ -28,12 +28,17 @@ export default defineNuxtRouteMiddleware(async (to) => {
   }
 
   const hasAdminAccess = authStore.hasPermission('dashboard.view')
-  const isVendor = authStore.hasRole('Vendor') || authStore.hasPermission('vendor.view')
+  const hasVendorRole = authStore.hasRole('Vendor')
+  const isVendor = hasVendorRole || authStore.hasPermission('vendor.view')
   const requiredPermission = typeof to.meta?.permission === 'string'
     ? to.meta.permission
     : null
+  const isVendorManagementRoute =
+    to.path === '/admin/vendors' || to.path.startsWith('/admin/vendors/')
+  const canAccessVendorManagement =
+    isVendorManagementRoute && authStore.hasPermission('vendors.view')
 
-  if (to.path.startsWith('/admin') && !hasAdminAccess) {
+  if (to.path.startsWith('/admin') && !hasAdminAccess && !canAccessVendorManagement) {
     return navigateTo(isVendor ? '/vendor/dashboard' : '/app')
   }
 
@@ -41,7 +46,11 @@ export default defineNuxtRouteMiddleware(async (to) => {
     return navigateTo(hasAdminAccess ? '/admin/dashboard' : '/app')
   }
 
-  if (requiredPermission && !authStore.hasPermission(requiredPermission)) {
+  const hasRequiredPermission = !requiredPermission
+    || authStore.hasPermission(requiredPermission)
+    || (requiredPermission === 'vendor.view' && hasVendorRole)
+
+  if (requiredPermission && !hasRequiredPermission) {
     if (hasAdminAccess) {
       return navigateTo('/admin/dashboard')
     }

@@ -9,9 +9,11 @@ import {
   KeyRound,
   RefreshCcw,
   ShieldCheck,
+  Store,
   Users,
   Workflow,
 } from "lucide-vue-next";
+import type { AdminVendorStatistics } from "~/composables/useVendor";
 
 import { useDashboardManagementStore } from "~/stores/dashboard/dashboardStore";
 
@@ -25,6 +27,20 @@ definePageMeta({
 
 const dashboardStore = useDashboardManagementStore();
 const toast = useToast();
+const authStore = useAuthStore();
+const { getAdminVendorStatistics } = useVendor();
+
+const canViewVendorStatistics = computed(() => authStore.hasPermission("vendors.view"));
+const vendorStatistics = ref<AdminVendorStatistics | null>(null);
+const vendorStatisticsLoading = ref(false);
+const vendorStatisticsError = ref("");
+
+const vendorStatusRows = computed(() => [
+  { label: "Pending", count: vendorStatistics.value?.pending ?? 0, variant: "warning" as const },
+  { label: "Approved", count: vendorStatistics.value?.approved ?? 0, variant: "success" as const },
+  { label: "Rejected", count: vendorStatistics.value?.rejected ?? 0, variant: "danger" as const },
+  { label: "Suspended", count: vendorStatistics.value?.suspended ?? 0, variant: "default" as const },
+]);
 
 const loading = computed(() => dashboardStore.loading);
 const refreshing = computed(() => dashboardStore.refreshing);
@@ -67,12 +83,31 @@ const fetchDashboard = async (
   } = {}
 ) => {
   try {
-    await dashboardStore.fetchDashboard(options);
+    await Promise.all([
+      dashboardStore.fetchDashboard(options),
+      fetchVendorStatistics(),
+    ]);
   } catch (error: any) {
     toast.error(
       "Dashboard failed",
       error.response?.data?.message || error.message || "Failed to load dashboard"
     );
+  }
+};
+
+const fetchVendorStatistics = async () => {
+  if (!canViewVendorStatistics.value) return;
+
+  vendorStatisticsLoading.value = true;
+  vendorStatisticsError.value = "";
+
+  try {
+    vendorStatistics.value = await getAdminVendorStatistics();
+  } catch (error: any) {
+    vendorStatisticsError.value =
+      error.response?.data?.message || error.message || "Failed to load vendor statistics";
+  } finally {
+    vendorStatisticsLoading.value = false;
   }
 };
 
@@ -185,7 +220,7 @@ onMounted(async () => {
     </div>
 
     <template v-else>
-      <div class="grid gap-4 lg:grid-cols-3">
+      <div class="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
         <AppCard title="System Status" subtitle="Current application health.">
           <div class="space-y-3">
             <div
@@ -315,6 +350,33 @@ onMounted(async () => {
             title="No role data"
             message="Assign roles to users to see distribution."
           />
+        </AppCard>
+
+        <AppCard
+          v-if="canViewVendorStatistics"
+          title="Vendor Status"
+          subtitle="Marketplace vendors by status."
+        >
+          <div v-if="vendorStatisticsLoading && !vendorStatistics" class="space-y-3">
+            <div v-for="row in 5" :key="row" class="h-10 animate-pulse rounded-xl bg-muted" />
+          </div>
+          <p v-else-if="vendorStatisticsError" class="text-sm text-destructive">
+            {{ vendorStatisticsError }}
+          </p>
+          <div v-else class="space-y-2">
+            <div class="flex items-center justify-between rounded-xl bg-muted/60 px-3 py-2.5">
+              <span class="text-sm font-semibold text-card-foreground">Total</span>
+              <AppBadge variant="info">{{ vendorStatistics?.total ?? 0 }}</AppBadge>
+            </div>
+            <div
+              v-for="row in vendorStatusRows"
+              :key="row.label"
+              class="flex items-center justify-between rounded-xl bg-muted/40 px-3 py-2.5"
+            >
+              <span class="text-sm text-muted-foreground">{{ row.label }}</span>
+              <AppBadge :variant="row.variant">{{ row.count }}</AppBadge>
+            </div>
+          </div>
         </AppCard>
       </div>
 

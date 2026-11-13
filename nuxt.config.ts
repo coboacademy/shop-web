@@ -3,7 +3,8 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
-  devtools: { 'enabled': true },
+
+  //devtools: { 'enabled': true },
   css: ['~/assets/css/main.css'],
 
   vite: {
@@ -14,10 +15,16 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     public: {
-      apiBase: 'http://127.0.0.1:8000/api',
+      apiBase: 'https://shop-api.test/api',
+      //apiBase: 'http://127.0.0.1:8000/api',
       //apiBase: 'https://cobo-api.laravel.cloud/api',
     },
   },
+
   ssr: false,
   components: [{ path: '~/components', pathPrefix: false }],
+
+  devtools: {
+    enabled: true,
+  },
 })

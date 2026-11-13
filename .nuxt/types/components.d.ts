@@ -29,10 +29,14 @@ interface _GlobalComponents {
   DeleteMenuModal: typeof import("../../app/components/menus/DeleteMenuModal.vue")['default']
   MenuFormModal: typeof import("../../app/components/menus/MenuFormModal.vue")['default']
   MenuIcon: typeof import("../../app/components/menus/MenuIcon.vue")['default']
+  NotificationInbox: typeof import("../../app/components/notifications/NotificationInbox.vue")['default']
   ImportPermissionModal: typeof import("../../app/components/permissions/ImportPermissionModal.vue")['default']
   AssignRolePermissionsModal: typeof import("../../app/components/roles/AssignRolePermissionsModal.vue")['default']
   CloneRoleModal: typeof import("../../app/components/roles/CloneRoleModal.vue")['default']
   ImportRoleModal: typeof import("../../app/components/roles/ImportRoleModal.vue")['default']
+  CustomerFooter: typeof import("../../app/components/storefront/CustomerFooter.vue")['default']
+  CustomerHeader: typeof import("../../app/components/storefront/CustomerHeader.vue")['default']
+  StorefrontProductCard: typeof import("../../app/components/storefront/StorefrontProductCard.vue")['default']
   DashboardPageMotion: typeof import("../../app/components/transition/DashboardPageMotion.vue")['default']
   MotionCard: typeof import("../../app/components/transition/MotionCard.vue")['default']
   ActionDropdown: typeof import("../../app/components/ui/ActionDropdown.vue")['default']
@@ -63,6 +67,11 @@ interface _GlobalComponents {
   EditUserModal: typeof import("../../app/components/users/EditUserModal.vue")['default']
   UserStatusBadge: typeof import("../../app/components/users/UserStatusBadge.vue")['default']
   EditStoreModal: typeof import("../../app/components/vendor/EditStoreModal.vue")['default']
+  InventorySummary: typeof import("../../app/components/vendor/products/InventorySummary.vue")['default']
+  ProductFilters: typeof import("../../app/components/vendor/products/ProductFilters.vue")['default']
+  ProductStats: typeof import("../../app/components/vendor/products/ProductStats.vue")['default']
+  ProductStatusBadge: typeof import("../../app/components/vendor/products/ProductStatusBadge.vue")['default']
+  ProductTable: typeof import("../../app/components/vendor/products/ProductTable.vue")['default']
   NuxtWelcome: typeof import("../../node_modules/nuxt/dist/app/components/welcome.vue")['default']
   NuxtLayout: typeof import("../../node_modules/nuxt/dist/app/components/nuxt-layout")['default']
   NuxtErrorBoundary: typeof import("../../node_modules/nuxt/dist/app/components/nuxt-error-boundary.vue")['default']
@@ -102,10 +111,14 @@ interface _GlobalComponents {
   LazyDeleteMenuModal: LazyComponent<typeof import("../../app/components/menus/DeleteMenuModal.vue")['default']>
   LazyMenuFormModal: LazyComponent<typeof import("../../app/components/menus/MenuFormModal.vue")['default']>
   LazyMenuIcon: LazyComponent<typeof import("../../app/components/menus/MenuIcon.vue")['default']>
+  LazyNotificationInbox: LazyComponent<typeof import("../../app/components/notifications/NotificationInbox.vue")['default']>
   LazyImportPermissionModal: LazyComponent<typeof import("../../app/components/permissions/ImportPermissionModal.vue")['default']>
   LazyAssignRolePermissionsModal: LazyComponent<typeof import("../../app/components/roles/AssignRolePermissionsModal.vue")['default']>
   LazyCloneRoleModal: LazyComponent<typeof import("../../app/components/roles/CloneRoleModal.vue")['default']>
   LazyImportRoleModal: LazyComponent<typeof import("../../app/components/roles/ImportRoleModal.vue")['default']>
+  LazyCustomerFooter: LazyComponent<typeof import("../../app/components/storefront/CustomerFooter.vue")['default']>
+  LazyCustomerHeader: LazyComponent<typeof import("../../app/components/storefront/CustomerHeader.vue")['default']>
+  LazyStorefrontProductCard: LazyComponent<typeof import("../../app/components/storefront/StorefrontProductCard.vue")['default']>
   LazyDashboardPageMotion: LazyComponent<typeof import("../../app/components/transition/DashboardPageMotion.vue")['default']>
   LazyMotionCard: LazyComponent<typeof import("../../app/components/transition/MotionCard.vue")['default']>
   LazyActionDropdown: LazyComponent<typeof import("../../app/components/ui/ActionDropdown.vue")['default']>
@@ -136,6 +149,11 @@ interface _GlobalComponents {
   LazyEditUserModal: LazyComponent<typeof import("../../app/components/users/EditUserModal.vue")['default']>
   LazyUserStatusBadge: LazyComponent<typeof import("../../app/components/users/UserStatusBadge.vue")['default']>
   LazyEditStoreModal: LazyComponent<typeof import("../../app/components/vendor/EditStoreModal.vue")['default']>
+  LazyInventorySummary: LazyComponent<typeof import("../../app/components/vendor/products/InventorySummary.vue")['default']>
+  LazyProductFilters: LazyComponent<typeof import("../../app/components/vendor/products/ProductFilters.vue")['default']>
+  LazyProductStats: LazyComponent<typeof import("../../app/components/vendor/products/ProductStats.vue")['default']>
+  LazyProductStatusBadge: LazyComponent<typeof import("../../app/components/vendor/products/ProductStatusBadge.vue")['default']>
+  LazyProductTable: LazyComponent<typeof import("../../app/components/vendor/products/ProductTable.vue")['default']>
   LazyNuxtWelcome: LazyComponent<typeof import("../../node_modules/nuxt/dist/app/components/welcome.vue")['default']>
   LazyNuxtLayout: LazyComponent<typeof import("../../node_modules/nuxt/dist/app/components/nuxt-layout")['default']>
   LazyNuxtErrorBoundary: LazyComponent<typeof import("../../node_modules/nuxt/dist/app/components/nuxt-error-boundary.vue")['default']>

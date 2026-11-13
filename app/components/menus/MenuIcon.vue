@@ -24,10 +24,12 @@ import {
   Users,
   Workflow,
 } from "lucide-vue-next";
+import * as LucideIcons from "lucide-vue-next";
 
 const props = withDefaults(
   defineProps<{
     name?: string | null;
+    icon?: string | null;
     label?: string | null;
     route?: string | null;
     group?: string | null;
@@ -35,6 +37,7 @@ const props = withDefaults(
   }>(),
   {
     name: null,
+    icon: null,
     label: null,
     route: null,
     group: null,
@@ -120,6 +123,22 @@ const pascalKey = computed(() => {
   return String(props.name || "").trim();
 });
 
+const explicitIcon = computed(() => {
+  const iconName = String(props.icon || "").trim();
+  if (!iconName) return null;
+
+  const pascalIconName = iconName
+    .split(/[^a-zA-Z0-9]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join("");
+  const iconExports = LucideIcons as unknown as Record<string, unknown>;
+  const candidate = iconExports[iconName] || iconExports[pascalIconName];
+
+  if (!candidate || iconName === "createLucideIcon") return null;
+  return candidate;
+});
+
 const resolvedKey = computed(() => {
   return (
     normalize(props.route) ||
@@ -131,6 +150,8 @@ const resolvedKey = computed(() => {
 });
 
 const iconComponent = computed(() => {
+  if (explicitIcon.value) return explicitIcon.value;
+
   // Support old usage: <MenuIcon name="LayoutDashboard" />
   if (pascalKey.value && iconMap[pascalKey.value]) {
     return iconMap[pascalKey.value];
