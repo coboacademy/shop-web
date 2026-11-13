@@ -1,1 +1,0 @@
-import{e as s,o as t,c as a,a as o,ad as n}from"./D4EAn30G.js";const c={class:"min-h-screen flex items-center justify-center p-6"},r={class:"w-full max-w-md"},i=s({__name:"auth",setup(l){return(e,d)=>(t(),a("div",c,[o("div",r,[n(e.$slots,"default")])]))}});export{i as default};
