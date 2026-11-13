@@ -1,1 +1,0 @@
-export { default } from "file:///D:/GIT/github/users/coboacademy/shop-web/node_modules/@nuxt/vite-builder/dist/vite-node-runner.mjs"

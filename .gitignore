@@ -1,2 +1,8 @@
 node_modules
-.outputs
+# Nuxt specific directories
+.output/
+.nuxt/
+127.0.0.1
+
+# TypeScript modernizer & migration artifacts
+.tsupgrader/
