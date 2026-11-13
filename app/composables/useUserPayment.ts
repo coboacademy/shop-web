@@ -20,11 +20,35 @@ export interface UserPayment {
   created_at: string;
 }
 
-interface ApiResponse<T> {
+export type UserPaymentMetadata = Record<string, unknown> | unknown[];
+
+export interface CreateUserPaymentPayload {
+  order_id: number;
+  method: UserPaymentMethod;
+  metadata?: UserPaymentMetadata | null;
+}
+
+export interface DemoPayment {
+  order_reference: string;
+  amount: string;
+  status: "pending" | "paid" | "failed";
+  expires_at: string;
+}
+
+export interface UserPaymentApiResponse<T> {
   status: string;
   message: string;
   data: T;
 }
+
+export interface CreateUserPaymentResponse
+  extends UserPaymentApiResponse<{
+    payment: UserPayment;
+    payment_url: string;
+  }> {}
+
+export interface DemoPaymentResponse
+  extends UserPaymentApiResponse<{ payment: DemoPayment }> {}
 
 interface ApiErrorResponse {
   message?: string;
@@ -59,13 +83,9 @@ const normalizeError = (
 export const useUserPayment = () => {
   const api = useApi();
 
-  const createPayment = async (payload: {
-    order_id: number;
-    method: UserPaymentMethod;
-    provider?: string | null;
-  }) => {
+  const createPayment = async (payload: CreateUserPaymentPayload) => {
     try {
-      const response = await api.post<ApiResponse<{ payment: UserPayment }>>(
+      const response = await api.post<CreateUserPaymentResponse>(
         "/payments",
         payload,
       );
@@ -77,17 +97,53 @@ export const useUserPayment = () => {
 
   const getPayment = async (paymentId: number) => {
     try {
-      const response = await api.get<ApiResponse<{ payment: UserPayment }>>(
-        `/payments/${paymentId}`,
-      );
+      const response = await api.get<
+        UserPaymentApiResponse<{ payment: UserPayment }>
+      >(`/payments/${paymentId}`);
       return response.data;
     } catch (error: unknown) {
       throw normalizeError(error, "Could not load payment details.");
     }
   };
 
+  const getDemoPayment = async (token: string) => {
+    try {
+      const response = await api.get<DemoPaymentResponse>(
+        `/payments/demo/${encodeURIComponent(token)}`,
+      );
+      return response.data;
+    } catch (error: unknown) {
+      throw normalizeError(error, "Could not load this demo payment.");
+    }
+  };
+
+  const succeedDemoPayment = async (token: string) => {
+    try {
+      const response = await api.post<DemoPaymentResponse>(
+        `/payments/demo/${encodeURIComponent(token)}/success`,
+      );
+      return response.data;
+    } catch (error: unknown) {
+      throw normalizeError(error, "Could not complete this demo payment.");
+    }
+  };
+
+  const failDemoPayment = async (token: string) => {
+    try {
+      const response = await api.post<DemoPaymentResponse>(
+        `/payments/demo/${encodeURIComponent(token)}/failure`,
+      );
+      return response.data;
+    } catch (error: unknown) {
+      throw normalizeError(error, "Could not record this demo payment failure.");
+    }
+  };
+
   return {
     createPayment,
     getPayment,
+    getDemoPayment,
+    succeedDemoPayment,
+    failDemoPayment,
   };
 };

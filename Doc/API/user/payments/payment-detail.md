@@ -54,7 +54,7 @@ Replace `<API_BASE_URL>` with the API base URL and `<YOUR_TOKEN>` with a valid t
       "status": "pending",
       "amount": "25.00",
       "transaction_id": null,
-      "provider": "ExamplePay",
+      "provider": "demo",
       "paid_at": null,
       "failed_at": null,
       "failure_reason": null,
@@ -75,7 +75,7 @@ Monetary values are serialized as decimal strings. The response includes only th
 | `data.payment.id` | Payment record identifier. |
 | `data.payment.order_id` | Associated order identifier. |
 | `data.payment.method` | Payment method recorded for the payment. |
-| `data.payment.status` | Current payment status. |
+| `data.payment.status` | Current payment status (`pending`, `paid`, `failed`, or `expired`). |
 | `data.payment.amount` | Payment amount. |
 | `data.payment.transaction_id` | Transaction ID, or `null` if not set. |
 | `data.payment.provider` | Provider name, or `null` if not set. |
@@ -112,6 +112,7 @@ Returned when the payment ID does not exist or its associated order does not bel
 
 - The payment is selected by its ID and constrained to payments whose related order belongs to the authenticated user.
 - The endpoint does not modify payment or order state.
+- `expires_at`, token storage fields, and provider metadata are not included in the payment resource. An expired attempt remains available in the owner's payment history with status `expired`.
 - No endpoint-specific throttling is defined on the route.
 
 ## Implementation References
