@@ -14,6 +14,11 @@ import {
   type CheckoutSummary,
   type CreatedOrder,
 } from "~/composables/useCheckout";
+import {
+  useUserPayment,
+  type UserPayment,
+  type UserPaymentApiError,
+} from "~/composables/useUserPayment";
 
 definePageMeta({
   layout: "user",
@@ -23,10 +28,15 @@ definePageMeta({
 });
 
 const { getCheckout, validateCheckout, createOrder } = useCheckout();
+const { createPayment } = useUserPayment();
 const toast = useToast();
 const checkout = ref<CheckoutSummary | null>(null);
 const validatedCheckout = ref<CheckoutSummary | null>(null);
 const completedOrder = ref<CreatedOrder | null>(null);
+const onlineOrder = ref<CreatedOrder | null>(null);
+const onlinePayment = ref<UserPayment | null>(null);
+const paymentUrl = ref<string | null>(null);
+const paymentPreparationError = ref("");
 const loading = ref(true);
 const submitting = ref(false);
 const emptyCart = ref(false);
@@ -53,6 +63,30 @@ const isCheckoutApiError = (error: unknown): error is CheckoutApiError =>
   "status" in error &&
   typeof error.status === "number" &&
   "errors" in error;
+
+const isUserPaymentApiError = (
+  error: unknown,
+): error is UserPaymentApiError =>
+  typeof error === "object" &&
+  error !== null &&
+  "message" in error &&
+  typeof error.message === "string" &&
+  "status" in error &&
+  typeof error.status === "number";
+
+const isHttpPaymentUrl = (value: unknown): value is string => {
+  if (typeof value !== "string" || !value.trim()) return false;
+  try {
+    const url = new URL(value);
+    return (
+      (url.protocol === "http:" || url.protocol === "https:") &&
+      !url.username &&
+      !url.password
+    );
+  } catch {
+    return false;
+  }
+};
 
 const formatPrice = (price: string | number | null | undefined) => {
   const amount = Number(price);
@@ -116,8 +150,74 @@ const loadCheckout = async () => {
   }
 };
 
-const submitCheckout = async () => {
-  if (submitting.value || !checkout.value?.items.length) return;
+const openPaymentLink = async () => {
+  if (!paymentUrl.value) return;
+
+  try {
+    const result = await navigateTo(paymentUrl.value, { external: true });
+    if (result !== undefined) {
+      throw new Error("Payment navigation was not completed.");
+    }
+    paymentPreparationError.value = "";
+  } catch {
+    paymentPreparationError.value =
+      "Your order and payment link are ready, but we could not open the link. Select Continue to payment to try again.";
+  }
+};
+
+const prepareOnlinePayment = async (order: CreatedOrder) => {
+  paymentPreparationError.value = "";
+
+  let response: Awaited<ReturnType<typeof createPayment>>;
+  try {
+    response = await createPayment({
+      order_id: order.id,
+      method: "online",
+    });
+  } catch (error: unknown) {
+    const reason = isUserPaymentApiError(error)
+      ? error.message
+      : "Please try again.";
+    paymentPreparationError.value =
+      `Order ${order.order_number} was created, but the payment link could not be prepared. ${reason}`;
+    return;
+  }
+
+  onlinePayment.value = response.data.payment;
+  if (!isHttpPaymentUrl(response.data.payment_url)) {
+    paymentUrl.value = null;
+    paymentPreparationError.value =
+      `Order ${order.order_number} was created, but the payment service returned an invalid link. Retry payment setup without recreating the order.`;
+    return;
+  }
+
+  paymentUrl.value = response.data.payment_url;
+  await openPaymentLink();
+};
+
+const retryOnlinePayment = async () => {
+  if (submitting.value || !onlineOrder.value) return;
+
+  submitting.value = true;
+  try {
+    if (paymentUrl.value) {
+      await openPaymentLink();
+    } else {
+      await prepareOnlinePayment(onlineOrder.value);
+    }
+  } finally {
+    submitting.value = false;
+  }
+};
+
+const submitCheckout = async (mode: "order" | "online" = "order") => {
+  if (
+    submitting.value ||
+    onlineOrder.value ||
+    !checkout.value?.items.length
+  ) {
+    return;
+  }
 
   submitting.value = true;
   errorMessage.value = "";
@@ -137,9 +237,15 @@ const submitCheckout = async () => {
       ...payloadFromForm(),
       customer_note: form.customer_note.trim() || null,
     });
-    completedOrder.value = response.data.order;
-    checkout.value = null;
-    toast.success("Order placed", response.message);
+    if (mode === "online") {
+      onlineOrder.value = response.data.order;
+      checkout.value = null;
+      await prepareOnlinePayment(response.data.order);
+    } else {
+      completedOrder.value = response.data.order;
+      checkout.value = null;
+      toast.success("Order placed", response.message);
+    }
   } catch (error: unknown) {
     if (await handleUnauthorized(error)) return;
     if (isCheckoutApiError(error)) {
@@ -184,7 +290,51 @@ onMounted(loadCheckout);
     </PageHeader>
 
     <div
-      v-if="completedOrder"
+      v-if="onlineOrder"
+      class="rounded-3xl border border-sky-200 bg-sky-50 p-6 dark:border-sky-900 dark:bg-sky-950/30 sm:p-10"
+    >
+      <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-100 text-sky-700 dark:bg-sky-900 dark:text-sky-200">
+        <LockKeyhole class="h-7 w-7" />
+      </span>
+      <p class="mt-5 text-sm font-semibold uppercase tracking-wide text-sky-800 dark:text-sky-300">
+        Order created — payment required
+      </p>
+      <h2 class="mt-2 text-2xl font-bold text-sky-950 dark:text-sky-100">
+        Continue to demo payment
+      </h2>
+      <p class="mt-2 text-sm text-sky-900 dark:text-sky-200">
+        Order {{ onlineOrder.order_number }} is ready. Complete the demo payment
+        to have the backend confirm your order. No real money is transferred.
+      </p>
+      <p class="mt-4 text-xl font-bold text-sky-950 dark:text-sky-100">
+        {{ formatPrice(onlineOrder.total) }}
+      </p>
+      <p v-if="onlinePayment" class="mt-2 text-sm text-sky-900 dark:text-sky-200">
+        Payment attempt status: {{ onlinePayment.status }}.
+      </p>
+      <AlertMessage
+        v-if="paymentPreparationError"
+        class="mt-5"
+        type="error"
+        title="Payment link needs attention"
+        :message="paymentPreparationError"
+      />
+      <AppButton
+        class="mt-6"
+        :loading="submitting"
+        :disabled="submitting"
+        @click="retryOnlinePayment"
+      >
+        <LockKeyhole class="h-4 w-4" />
+        {{ paymentUrl ? "Continue to payment" : "Retry payment setup" }}
+      </AppButton>
+      <p class="mt-3 text-xs text-sky-900 dark:text-sky-200">
+        This recovery action will not create another order.
+      </p>
+    </div>
+
+    <div
+      v-else-if="completedOrder"
       class="rounded-3xl border border-emerald-200 bg-emerald-50 p-6 dark:border-emerald-900 dark:bg-emerald-950/30 sm:p-10"
     >
       <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-200">
@@ -390,10 +540,10 @@ onMounted(loadCheckout);
           class="flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200"
         >
           <CheckCircle2 class="mt-0.5 h-5 w-5 shrink-0" />
-          <p>Shipping details and cart availability are verified. Place your order when you’re ready.</p>
+          <p>Shipping details and cart availability are verified. Place your order, or choose online payment.</p>
         </div>
 
-        <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <NuxtLink
             to="/app/cart"
             class="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-border px-5 text-sm font-semibold transition hover:bg-muted"
@@ -401,15 +551,29 @@ onMounted(loadCheckout);
             <ArrowLeft class="h-4 w-4" />
             Back to cart
           </NuxtLink>
-          <AppButton
-            type="submit"
-            :loading="submitting"
-            :disabled="submitting || !checkout.items.length"
-            class="sm:min-w-48"
-          >
-            <LockKeyhole class="h-4 w-4" />
-            {{ validatedCheckout ? "Place order" : "Review order" }}
-          </AppButton>
+          <div class="flex flex-col gap-3 sm:flex-row">
+            <AppButton
+              type="submit"
+              :loading="submitting"
+              :disabled="submitting || !checkout.items.length"
+              class="sm:min-w-48"
+            >
+              <LockKeyhole class="h-4 w-4" />
+              {{ validatedCheckout ? "Place order" : "Review order" }}
+            </AppButton>
+            <AppButton
+              v-if="validatedCheckout"
+              type="button"
+              variant="secondary"
+              :loading="submitting"
+              :disabled="submitting || !checkout.items.length"
+              class="sm:min-w-48"
+              @click="submitCheckout('online')"
+            >
+              <LockKeyhole class="h-4 w-4" />
+              Pay online
+            </AppButton>
+          </div>
         </div>
         <p class="text-center text-xs text-muted-foreground">
           Your order is revalidated by the server before it is created.

@@ -277,6 +277,8 @@ describe("public demo payment page", () => {
     expect(pageMetadata[0]).not.toHaveProperty("middleware");
     expect(paymentApi.getDemoPayment).toHaveBeenCalledOnce();
     expect(paymentApi.getDemoPayment).toHaveBeenCalledWith("opaque-token");
+    expect(paymentApi.succeedDemoPayment).not.toHaveBeenCalled();
+    expect(paymentApi.failDemoPayment).not.toHaveBeenCalled();
     app.unmount();
   });
 
@@ -316,6 +318,26 @@ describe("public demo payment page", () => {
       (node) => node.type === "a" && node.props.href === "/app/orders",
     )).toBe(true);
     app.unmount();
+  });
+
+  it("reloads the backend payment state when revisiting a completed demo URL", async () => {
+    const paidPayment = { ...demoPayment, status: "paid" as const };
+    const api = createPaymentApi();
+    api.getDemoPayment
+      .mockResolvedValueOnce(paymentResponse(demoPayment))
+      .mockResolvedValueOnce(paymentResponse(paidPayment));
+
+    const firstVisit = await createPageHarness(api);
+    firstVisit.app.unmount();
+    const revisit = await createPageHarness(api);
+
+    expect(api.getDemoPayment).toHaveBeenCalledTimes(2);
+    expect(api.getDemoPayment).toHaveBeenNthCalledWith(1, "opaque-token");
+    expect(api.getDemoPayment).toHaveBeenNthCalledWith(2, "opaque-token");
+    expect(api.succeedDemoPayment).not.toHaveBeenCalled();
+    expect(api.failDemoPayment).not.toHaveBeenCalled();
+    expect(textContent(revisit.root)).toContain("Demo payment successful");
+    revisit.app.unmount();
   });
 
   it("calls the failure action and renders its failed response", async () => {

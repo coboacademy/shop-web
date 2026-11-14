@@ -5,6 +5,7 @@ import {
   Clock3,
   CreditCard,
   Eye,
+  LockKeyhole,
   MapPin,
   Package,
   RefreshCw,
@@ -18,6 +19,10 @@ import {
   type UserOrderApiError,
   type UserOrderListItem,
 } from "~/composables/useUserOrder";
+import {
+  useUserPayment,
+  type UserPaymentApiError,
+} from "~/composables/useUserPayment";
 
 definePageMeta({
   layout: "user",
@@ -30,6 +35,8 @@ const ORDERS_PER_PAGE = 15;
 type BadgeVariant = "default" | "success" | "danger" | "warning" | "info";
 
 const { getOrders, getOrder } = useUserOrder();
+const { createPayment } = useUserPayment();
+const notificationStore = useNotificationStore();
 const orders = ref<UserOrderListItem[]>([]);
 const page = ref(1);
 const search = ref("");
@@ -41,6 +48,9 @@ const detailLoading = ref(false);
 const detailError = ref("");
 const selectedOrder = ref<UserOrder | null>(null);
 const selectedOrderId = ref<number | null>(null);
+const paymentLoading = ref<Record<number, boolean>>({});
+const paymentErrors = ref<Record<number, string>>({});
+const paymentUrls = ref<Record<number, string>>({});
 
 const isOrderApiError = (error: unknown): error is UserOrderApiError =>
   typeof error === "object" &&
@@ -50,6 +60,40 @@ const isOrderApiError = (error: unknown): error is UserOrderApiError =>
   "status" in error &&
   typeof error.status === "number" &&
   "errors" in error;
+
+const isUserPaymentApiError = (
+  error: unknown,
+): error is UserPaymentApiError =>
+  typeof error === "object" &&
+  error !== null &&
+  "message" in error &&
+  typeof error.message === "string" &&
+  "status" in error &&
+  typeof error.status === "number";
+
+const isOnlinePaymentRetryEligible = (
+  order: Pick<UserOrderListItem, "status" | "payment_status">,
+) =>
+  typeof order.status === "string" &&
+  typeof order.payment_status === "string" &&
+  order.status.toLowerCase() !== "cancelled" &&
+  ["unpaid", "pending"].includes(order.payment_status.toLowerCase());
+
+const isHttpPaymentUrl = (value: unknown): value is string => {
+  if (typeof value !== "string" || !value.trim() || value !== value.trim()) {
+    return false;
+  }
+  try {
+    const url = new URL(value);
+    return (
+      (url.protocol === "http:" || url.protocol === "https:") &&
+      !url.username &&
+      !url.password
+    );
+  } catch {
+    return false;
+  }
+};
 
 const visibleOrders = computed(() => {
   const query = search.value.trim().toLowerCase();
@@ -149,7 +193,10 @@ const paymentVariant = (status: string): BadgeVariant => {
 };
 
 const handleUnauthorized = async (error: unknown) => {
-  if (isOrderApiError(error) && error.status === 401) {
+  if (
+    (isOrderApiError(error) || isUserPaymentApiError(error)) &&
+    error.status === 401
+  ) {
     await navigateTo({
       path: "/login",
       query: { redirect: "/app/orders" },
@@ -207,6 +254,65 @@ const loadOrderDetails = async (orderId: number) => {
   }
 };
 
+const refreshAfterHistoryRestore = async (
+  event: Pick<PageTransitionEvent, "persisted">,
+) => {
+  if (!event.persisted) return;
+
+  await loadOrders();
+  if (isDetailOpen.value && selectedOrderId.value !== null) {
+    await loadOrderDetails(selectedOrderId.value);
+  }
+  await notificationStore.refreshNotifications();
+};
+
+const retryOnlinePayment = async (order: UserOrderListItem | UserOrder) => {
+  if (
+    !isOnlinePaymentRetryEligible(order) ||
+    paymentLoading.value[order.id]
+  ) {
+    return;
+  }
+
+  paymentLoading.value[order.id] = true;
+  paymentErrors.value[order.id] = "";
+  try {
+    let paymentUrl = paymentUrls.value[order.id];
+    if (!paymentUrl) {
+      const response = await createPayment({
+        order_id: order.id,
+        method: "online",
+      });
+      if (!isHttpPaymentUrl(response?.data?.payment_url)) {
+        paymentErrors.value[order.id] =
+          "The payment service returned an invalid link. Select Retry payment to request another link.";
+        return;
+      }
+      paymentUrl = response.data.payment_url;
+      paymentUrls.value[order.id] = paymentUrl;
+    }
+
+    try {
+      const navigationResult = await navigateTo(paymentUrl, { external: true });
+      if (navigationResult !== undefined) {
+        throw new Error("Payment navigation was not completed.");
+      }
+    } catch {
+      paymentErrors.value[order.id] =
+        "The payment link is ready, but could not be opened. Select Retry payment to try again.";
+    }
+  } catch (error: unknown) {
+    if (await handleUnauthorized(error)) return;
+    paymentErrors.value[order.id] = isUserPaymentApiError(error)
+      ? error.message
+      : error instanceof Error
+        ? error.message
+        : "Could not prepare the payment link. Select Retry payment to try again.";
+  } finally {
+    paymentLoading.value[order.id] = false;
+  }
+};
+
 const closeDetails = () => {
   isDetailOpen.value = false;
   selectedOrder.value = null;
@@ -223,7 +329,14 @@ watch([search, statusFilter], () => {
   if (page.value !== 1) void changePage(1);
 });
 
-onMounted(() => loadOrders(1));
+onMounted(() => {
+  void loadOrders(1);
+  window.addEventListener("pageshow", refreshAfterHistoryRestore);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("pageshow", refreshAfterHistoryRestore);
+});
 </script>
 
 <template>
@@ -388,10 +501,29 @@ onMounted(() => loadOrders(1));
         <span class="text-sm text-muted-foreground">{{ formatDate(row.created_at) }}</span>
       </template>
       <template #cell-actions="{ row }">
-        <AppButton variant="secondary" size="sm" @click="openOrder(row)">
-          <Eye class="h-4 w-4" />
-          Details
-        </AppButton>
+        <div class="flex flex-col items-end gap-2">
+          <div class="flex flex-wrap justify-end gap-2">
+            <AppButton
+              v-if="isOnlinePaymentRetryEligible(row)"
+              size="sm"
+              :loading="paymentLoading[row.id]"
+              :disabled="paymentLoading[row.id]"
+              @click="retryOnlinePayment(row)"
+            >
+              <LockKeyhole class="h-4 w-4" />
+              Retry payment
+            </AppButton>
+            <AppButton variant="secondary" size="sm" @click="openOrder(row)">
+              <Eye class="h-4 w-4" />
+              Details
+            </AppButton>
+          </div>
+          <AlertMessage
+            v-if="paymentErrors[row.id]"
+            type="error"
+            :message="paymentErrors[row.id]"
+          />
+        </div>
       </template>
     </DataTable>
 
@@ -561,6 +693,25 @@ onMounted(() => loadOrders(1));
             <span>{{ formatPrice(selectedOrder.total) }}</span>
           </div>
         </section>
+
+        <div
+          v-if="isOnlinePaymentRetryEligible(selectedOrder)"
+          class="ml-auto max-w-sm space-y-3"
+        >
+          <AppButton
+            :loading="paymentLoading[selectedOrder.id]"
+            :disabled="paymentLoading[selectedOrder.id]"
+            @click="retryOnlinePayment(selectedOrder)"
+          >
+            <LockKeyhole class="h-4 w-4" />
+            Retry payment
+          </AppButton>
+          <AlertMessage
+            v-if="paymentErrors[selectedOrder.id]"
+            type="error"
+            :message="paymentErrors[selectedOrder.id]"
+          />
+        </div>
       </div>
     </AppModal>
   </div>
